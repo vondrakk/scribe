@@ -22,6 +22,11 @@ jobs:
   build:
     name: build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    # Best-effort targets (deprecated Intel macOS runners can queue for ages)
+    # are allowed to fail without failing the job, so they never block the
+    # release of the other platforms.
+    continue-on-error: ${{ matrix.experimental || false }}
     strategy:
       fail-fast: false
       matrix:
@@ -29,12 +34,13 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl   # static, runs on any x86-64 Linux
             label: linux-x86_64-musl
-          - os: macos-13
-            target: x86_64-apple-darwin          # Intel Macs
-            label: macos-x86_64
           - os: macos-14
             target: aarch64-apple-darwin         # Apple Silicon (M1+)
             label: macos-arm64
+          - os: macos-13
+            target: x86_64-apple-darwin          # Intel Macs (best-effort)
+            label: macos-x86_64
+            experimental: true
 
     steps:
       - uses: actions/checkout@v4
@@ -83,6 +89,7 @@ jobs:
   publish:
     name: publish release
     needs: build
+    if: ${{ always() }}   # publish with whatever platforms succeeded
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
