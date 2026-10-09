@@ -6,8 +6,29 @@
 <script src="/xterm.js"></script>
 <script src="/addon-fit.js"></script>
 <style>
+/* Theme tokens. :root is the default dark palette ("Slate"); named palettes
+   below override the tokens. JS resolves "Auto" to a concrete palette from the
+   OS color-scheme and sets data-theme on <html>, so the CSS needs no media
+   queries. First paint (before JS) is Slate. */
 :root{--bg:#0f1115;--panel:#171a21;--line:#262b35;--fg:#e6e9ef;--mut:#8b94a7;
---accent:#6ea8fe;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--chip:#1f2530;}
+--accent:#6ea8fe;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--chip:#1f2530;
+--input:#10131a;--pre-fg:#cdd3df;--go-fg:#06121f;color-scheme:dark;}
+/* Midnight — deeper, bluer dark. */
+:root[data-theme="midnight"]{--bg:#0a0e1a;--panel:#111729;--line:#1e2740;--fg:#e8ecf7;--mut:#8691b5;
+--accent:#7c9eff;--ok:#56d998;--warn:#f5c451;--bad:#ff7a85;--chip:#182036;
+--input:#0b1020;--pre-fg:#d2d9ee;--go-fg:#060b1a;color-scheme:dark;}
+/* Nord — muted arctic dark. */
+:root[data-theme="nord"]{--bg:#2e3440;--panel:#343b4a;--line:#434c5e;--fg:#eceff4;--mut:#9aa6bd;
+--accent:#88c0d0;--ok:#a3be8c;--warn:#ebcb8b;--bad:#bf616a;--chip:#3b4252;
+--input:#2a2f3b;--pre-fg:#e5e9f0;--go-fg:#12161d;color-scheme:dark;}
+/* Paper — clean light. */
+:root[data-theme="light"]{--bg:#f7f8fa;--panel:#ffffff;--line:#e2e5ea;--fg:#1c2230;--mut:#5b6474;
+--accent:#2563eb;--ok:#16a34a;--warn:#b45309;--bad:#dc2626;--chip:#eef1f6;
+--input:#f1f3f7;--pre-fg:#283043;--go-fg:#ffffff;color-scheme:light;}
+/* Solarized — warm light. */
+:root[data-theme="solarized"]{--bg:#fdf6e3;--panel:#fbf1d6;--line:#e6dcc0;--fg:#3b4a4e;--mut:#93a1a1;
+--accent:#268bd2;--ok:#859900;--warn:#b58900;--bad:#dc322f;--chip:#eee8d5;
+--input:#f5edd8;--pre-fg:#3b4a4e;--go-fg:#fdf6e3;color-scheme:light;}
 *{box-sizing:border-box}
 body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
 background:var(--bg);color:var(--fg)}
@@ -34,11 +55,11 @@ main{padding:20px;max-width:none;margin:0}
 .btn{background:var(--chip);border:1px solid var(--line);color:var(--fg);border-radius:7px;
 padding:6px 12px;cursor:pointer;font-size:13px}
 .btn:hover{border-color:var(--accent)}
-.btn.ok{color:var(--ok)} .btn.bad{color:var(--bad)} .btn.go{background:var(--accent);color:#06121f;border-color:var(--accent)}
+.btn.ok{color:var(--ok)} .btn.bad{color:var(--bad)} .btn.go{background:var(--accent);color:var(--go-fg);border-color:var(--accent)}
 .actions{display:flex;gap:8px;margin-top:10px}
-pre{white-space:pre-wrap;background:#10131a;border:1px solid var(--line);border-radius:7px;
-padding:10px;margin:8px 0;font-family:ui-monospace,monospace;font-size:12.5px;color:#cdd3df}
-textarea{width:100%;min-height:150px;background:#10131a;color:var(--fg);border:1px solid var(--line);
+pre{white-space:pre-wrap;background:var(--input);border:1px solid var(--line);border-radius:7px;
+padding:10px;margin:8px 0;font-family:ui-monospace,monospace;font-size:12.5px;color:var(--pre-fg)}
+textarea{width:100%;min-height:150px;background:var(--input);color:var(--fg);border:1px solid var(--line);
 border-radius:7px;padding:10px;font-family:ui-monospace,monospace;font-size:12.5px}
 .ev{display:grid;grid-template-columns:120px 70px 1fr;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:12.5px}
 .ev:first-child{border-top:0}
@@ -51,7 +72,7 @@ border-radius:7px;padding:10px;font-family:ui-monospace,monospace;font-size:12.5
 .toolbar{display:flex;gap:8px;margin-bottom:12px}
 small.src{color:var(--mut)}
 label{display:block;margin:12px 0 4px;color:var(--mut);font-size:12px}
-input[type=number],input[type=text]{background:#10131a;color:var(--fg);border:1px solid var(--line);
+input[type=number],input[type=text]{background:var(--input);color:var(--fg);border:1px solid var(--line);
 border-radius:6px;padding:6px 8px;width:140px}
 #bar{display:flex;align-items:center;gap:10px;padding:8px 20px;border-bottom:1px solid var(--line);
 background:var(--panel);position:sticky;top:49px;z-index:4;flex-wrap:wrap}
@@ -66,7 +87,7 @@ border:1px solid var(--line);color:var(--fg)}
 .chip:hover{border-color:var(--accent)}
 .capwarn{background:#2a2410;border:1px solid #5c4a12;color:var(--warn);padding:8px 12px;border-radius:8px;
 margin:10px 0;font-size:12.5px}
-.capwarn code{background:#10131a;padding:2px 6px;border-radius:4px;color:var(--fg)}
+.capwarn code{background:var(--input);padding:2px 6px;border-radius:4px;color:var(--fg)}
 nav{top:93px}
 .srow{display:grid;grid-template-columns:26px 104px 74px 1fr auto;gap:10px;align-items:start;padding:9px 16px;border-top:1px solid var(--line)}
 .srow:first-child{border-top:0}
@@ -78,11 +99,35 @@ nav{top:93px}
 .sdet{font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sact{white-space:nowrap;align-self:center}
 select.btn{padding:6px 8px}
+.themesel{margin-left:12px}
+/* hamburger menu */
+.menu{position:relative;margin-left:8px}
+.menupop{position:absolute;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);
+border-radius:10px;padding:6px;min-width:190px;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:20;
+display:flex;flex-direction:column;gap:2px}
+.menupop[hidden]{display:none}
+.menupop button,.menupop a{background:none;border:0;color:var(--fg);text-align:left;padding:8px 10px;
+border-radius:7px;cursor:pointer;font-size:13px;text-decoration:none;display:block;width:100%}
+.menupop button:hover,.menupop a:hover{background:var(--chip)}
+/* guided tour */
+.tour-ov{position:fixed;inset:0;z-index:1000}
+.tour-ring{position:absolute;border-radius:10px;box-shadow:0 0 0 9999px rgba(8,10,14,.62);
+outline:2px solid var(--accent);transition:all .18s ease;pointer-events:none}
+.tour-card{position:absolute;max-width:320px;background:var(--panel);border:1px solid var(--line);
+border-radius:12px;padding:14px 16px;box-shadow:0 14px 40px rgba(0,0,0,.45);z-index:1001}
+.tour-h{font-size:15px;font-weight:600;margin-bottom:6px}
+.tour-b{font-size:13px;color:var(--fg);line-height:1.55}
+.tour-f{display:flex;gap:8px;align-items:center;margin-top:14px}
 @media (max-width:560px){.srow{grid-template-columns:24px 1fr auto}.stime,.sdir{display:none}}
 /* humanized stream feed */
 .sday{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:600;padding:18px 4px 4px;display:flex;align-items:center}
 .daybtn{margin-left:10px;padding:2px 9px;font-size:11px;letter-spacing:.02em;text-transform:none;opacity:.55}
 .daybtn:hover{opacity:1;border-color:var(--accent)}
+/* project sub-group header, nested under a day */
+.sproj{font-size:12px;letter-spacing:.02em;color:var(--fg);font-weight:600;
+padding:10px 4px 2px 16px;margin-left:6px;border-left:2px solid var(--line);
+display:flex;align-items:center;gap:6px}
+.sproj .daybtn{opacity:.45}
 .frow{display:grid;grid-template-columns:14px 10px 1fr auto auto;gap:10px;align-items:start;
 padding:10px 13px;border:1px solid var(--line);border-radius:10px;background:var(--panel);margin:7px 0}
 .frow[draggable=true]{cursor:grab} .frow[draggable=true]:active{cursor:grabbing}
@@ -93,9 +138,9 @@ padding:10px 13px;border:1px solid var(--line);border-radius:10px;background:var
 .schip.tkt{background:#102a3a;color:var(--accent);border:1px solid #1d3a52;margin-left:8px}
 .schip.tag{background:#1c2a1c;color:#86d17a;border:1px solid #2d4a2d;margin-left:6px}
 .fdetail{margin-top:10px;padding:10px 12px;background:#0b0e14;border:1px solid var(--line);border-radius:8px}
-.fdetail .cmd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#cdd3df;white-space:pre-wrap;padding:1px 0}
+.fdetail .cmd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--pre-fg);white-space:pre-wrap;padding:1px 0}
 .fdetail .cmt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#86d17a;padding:1px 0}
-.tagin{background:#10131a;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;width:150px;font-size:12.5px}
+.tagin{background:var(--input);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;width:150px;font-size:12.5px}
 .tagbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 2px}
 .tfilter{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--chip);border:1px solid var(--line);color:var(--mut);cursor:pointer}
 .tfilter:hover{border-color:var(--accent)} .tfilter.on{color:var(--fg);border-color:var(--accent);background:#102a3a}
@@ -171,9 +216,37 @@ border-radius:0 7px 7px 7px;padding:12px;font-size:12.5px;line-height:1.5;white-
 #ptymount{height:66vh;min-height:420px;background:#0b0e14;border:1px solid var(--line);border-radius:0 7px 7px 7px;padding:6px 8px;overflow:hidden}
 .xtermhost{height:100%;width:100%}
 .xterm{height:100%}
-</style></head>
+</style>
+<script>
+// Apply the saved theme before first paint to avoid a flash. "auto" (or unset)
+// resolves to a light/dark palette from the OS; a named value is used as-is.
+(function(){
+  try{
+    var choice=localStorage.getItem('scribe-theme')||'auto';
+    var resolved=choice;
+    if(choice==='auto'){
+      var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+      resolved=dark?'slate':'light';
+    }
+    document.documentElement.setAttribute('data-theme',resolved);
+  }catch(e){}
+})();
+</script>
+</head>
 <body>
-<header><h1>🪶 Scribe</h1><div class="bind" id="bind">…</div></header>
+<header><h1>🪶 Scribe</h1><div class="bind" id="bind">…</div>
+<select class="btn themesel" id="themesel" title="Theme" aria-label="Theme"
+  onchange="setTheme(this.value)">
+  <optgroup label="Mode"><option value="auto">Auto (system)</option></optgroup>
+  <optgroup label="Dark"><option value="slate">Slate</option><option value="midnight">Midnight</option><option value="nord">Nord</option></optgroup>
+  <optgroup label="Light"><option value="light">Paper</option><option value="solarized">Solarized</option></optgroup>
+</select>
+<div class="menu"><button class="btn menubtn" id="menubtn" title="Menu" aria-label="Menu" onclick="toggleMenu()">☰</button>
+<div class="menupop" id="menupop" hidden>
+  <button onclick="startTour();closeMenu()">🧭 Take a tour</button>
+  <a href="https://github.com/vondrakk/scribe" target="_blank" rel="noopener">↗ Project on GitHub</a>
+</div></div>
+</header>
 <div id="bar"></div>
 <nav id="nav"></nav>
 <div id="cap"></div>
@@ -335,7 +408,7 @@ function dayLabel(ts){
   return new Date(ts*1000).toLocaleDateString([], {weekday:'long',month:'short',day:'numeric'});
 }
 // ---- Stream: two-pane builder (activity feed + drag-to-combine) ----
-let streamItems={}, buildIds=[], builtDraftId=null, expanded=new Set(), tagFilter='', showRules=false, groupMode='day';
+let streamItems={}, buildIds=[], builtDraftId=null, expanded=new Set(), tagFilter='', showRules=false, groupMode='project';
 function prettyCwd(p){ if(!p)return ''; return p.replace(/^\/home\/[^/]+/,'~'); }
 function fmtDur(s){ s=Math.round(s||0); if(s<60)return s+'s'; const m=Math.round(s/60); if(m<60)return m+'m'; return Math.floor(m/60)+'h '+(m%60)+'m'; }
 // Parse a human duration like "1h30m", "45m", "90s" or a bare number (minutes).
@@ -429,8 +502,8 @@ async function renderStream(m){
   const needs=items.filter(it=>it.dir==='out'&&(it.status==='draft'||it.status==='approved')).length;
   // Filter to one tag's work when a tag filter is active (day grouping only).
   const shown = tagFilter? items.filter(it=>it.dir==='work'&&(it.tags||[]).includes(tagFilter)) : items;
-  const feed = groupMode==='tag' ? feedByTag(items) : feedByDay(shown);
-  const grouptoggle=`<span class="gtoggle"><span class="gopt ${groupMode==='day'?'on':''}" onclick="setGroup('day')">by day</span><span class="gopt ${groupMode==='tag'?'on':''}" onclick="setGroup('tag')">by tag</span></span>`;
+  const feed = groupMode==='tag' ? feedByTag(items) : (groupMode==='project' ? feedByDayProject(shown) : feedByDay(shown));
+  const grouptoggle=`<span class="gtoggle"><span class="gopt ${groupMode==='project'?'on':''}" onclick="setGroup('project')">by project</span><span class="gopt ${groupMode==='day'?'on':''}" onclick="setGroup('day')">by day</span><span class="gopt ${groupMode==='tag'?'on':''}" onclick="setGroup('tag')">by tag</span></span>`;
   const tagbar=`<div class="tagbar">
     ${grouptoggle}
     ${groupMode==='day'?`<span class="tfilter ${tagFilter?'':'on'}" onclick="setFilter('')">All</span>
@@ -473,7 +546,7 @@ function rulesHtml(rules){
   return '<div class="rulesbox">'+rules.map(r=>`<div class="rulerow"><span class="schip tag">${esc(r.tag)}</span><span class="mut mono rprefix">${esc(r.prefix)}</span><span class="rdel" onclick="removeTag('${esc((r.prefix||'').replace(/'/g,''))}','${esc((r.tag||'').replace(/'/g,''))}')">remove</span></div>`).join('')+'</div>';
 }
 function setFilter(t){ tagFilter=t; load(); }
-function setGroup(g){ groupMode=g; load(); }
+function setGroup(g){ groupMode=g; if(g!=='day')tagFilter=''; load(); }
 // Render a flat list of items (already ordered), collapsing consecutive identical
 // work into N× rows. No section headers — callers add those.
 function renderItems(list){
@@ -518,6 +591,42 @@ function feedByTag(items){
   if(untagged.length) feed+=`<div class="sday">Untagged</div>`+renderItems(untagged);
   return feed;
 }
+// A work item's "project" = its first rule tag (null when untagged).
+function projKey(it){ const t=it.tags||[]; return t.length? t[0] : null; }
+// Day → Project nesting (the default). Days are newest-first (the input is
+// already sorted). Within a day, items are bucketed into project groups (by
+// first rule tag), plus an "Updates & drafts" bucket for non-work items and an
+// "Untagged" bucket for work with no tag. Groups FLOAT BY RECENCY — the group
+// whose newest item is most recent sits first — and items inside each group
+// stay newest-first, so freshly captured work lands at the top of its group as
+// it comes in.
+function feedByDayProject(list){
+  let feed='', i=0;
+  while(i<list.length){
+    const dk=dayKey(list[i].ts), dl=dayLabel(list[i].ts);
+    let run=[]; while(i<list.length&&dayKey(list[i].ts)===dk){run.push(list[i]);i++;}
+    const groups=new Map(); // name -> {label, kind, items:[], last}
+    const add=(name,label,kind,it)=>{
+      let g=groups.get(name);
+      if(!g){ g={label,kind,items:[],last:it.ts}; groups.set(name,g); }
+      g.items.push(it); if(it.ts>g.last)g.last=it.ts;
+    };
+    run.forEach(it=>{
+      if(it.dir!=='work'){ add('__updates','Updates & drafts','updates',it); return; }
+      const p=projKey(it);
+      if(p) add('tag:'+p, p, 'tag', it); else add('__untagged','Untagged','untagged',it);
+    });
+    const ordered=[...groups.values()].sort((a,b)=>b.last-a.last); // float by recency
+    feed+=`<div class="sday">${dl}<button class="btn daybtn" onclick="combineDay('${dk}')">⊕ combine this day</button></div>`;
+    ordered.forEach(g=>{
+      let btn='';
+      if(g.kind==='tag') btn=`<button class="btn daybtn" onclick="combineDayTag('${dk}','${esc(g.label)}')">⊕ combine</button>`;
+      else if(g.kind==='untagged') btn=`<button class="btn daybtn" onclick="combineDayUntagged('${dk}')">⊕ combine</button>`;
+      feed+=`<div class="sproj">${esc(g.label)}${btn}</div>`+renderItems(g.items);
+    });
+  }
+  return feed;
+}
 async function saveTime(ids,key,reset){
   const el=document.getElementById('timein-'+key);
   const secs=reset?-1:parseDur(el?el.value:'');
@@ -534,6 +643,9 @@ function addToBuild(pred){
 }
 function combineAllTag(){ addToBuild(()=>true); }
 function combineDay(dk){ addToBuild(it=>dayKey(it.ts)===dk); }
+// Project-scoped combine within one day (matches the Day → Project grouping).
+function combineDayTag(dk,tag){ addToBuild(it=>dayKey(it.ts)===dk && projKey(it)===tag); }
+function combineDayUntagged(dk){ addToBuild(it=>dayKey(it.ts)===dk && !projKey(it)); }
 // Add every work item carrying `tag` (independent of the current filter).
 function combineTag(tag){
   Object.values(streamItems).filter(it=>it.dir==='work'&&(it.tags||[]).includes(tag))
@@ -892,13 +1004,99 @@ async function saveCfg(){
   await refresh();load();
 }
 let lastSig='';
-refresh().then(()=>{lastSig=sigOf(state);load();});
+// ---- Theme picker ----
+function resolvedTheme(choice){
+  if(choice!=='auto')return choice;
+  const dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return dark?'slate':'light';
+}
+function setTheme(choice){
+  try{localStorage.setItem('scribe-theme',choice);}catch(e){}
+  document.documentElement.setAttribute('data-theme',resolvedTheme(choice));
+  const sel=document.getElementById('themesel'); if(sel)sel.value=choice;
+}
+function initTheme(){
+  let choice='auto'; try{choice=localStorage.getItem('scribe-theme')||'auto';}catch(e){}
+  const sel=document.getElementById('themesel'); if(sel)sel.value=choice;
+  // While in Auto, follow the OS light/dark switch live.
+  if(window.matchMedia){
+    const mq=window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange=()=>{let c='auto'; try{c=localStorage.getItem('scribe-theme')||'auto';}catch(e){}
+      if(c==='auto')document.documentElement.setAttribute('data-theme',resolvedTheme('auto'));};
+    if(mq.addEventListener)mq.addEventListener('change',onChange); else if(mq.addListener)mq.addListener(onChange);
+  }
+}
+// ---- Hamburger menu ----
+function toggleMenu(){ const p=document.getElementById('menupop'); if(p)p.hidden=!p.hidden; }
+function closeMenu(){ const p=document.getElementById('menupop'); if(p)p.hidden=true; }
+document.addEventListener('click',e=>{ const m=document.querySelector('.menu'); if(m&&!m.contains(e.target))closeMenu(); });
+
+// ---- Guided tour ----
+const TOUR=[
+  {title:'Welcome to Scribe 🪶', body:'Scribe passively captures your terminal + git work and turns it into draft Jira / Confluence artifacts you review before anything is sent. Here is the 60-second tour.'},
+  {sel:'#bar', title:'Capture status', body:'The dot here is green while Scribe is capturing your shell. Enable capture once per terminal by sourcing the snippet that `scribe up` prints.'},
+  {sel:'#bind', title:'Active ticket', body:'Your current bound ticket. Work auto-binds from a branch key like feat/OPS-1234 — otherwise bind it here, or in the shell with `w OPS-1234`.'},
+  {sel:'nav', title:'The tabs', body:'Stream is your live activity feed. Drafts holds generated artifacts awaiting review. Logged, Timeline, Settings and more live here too.'},
+  {sel:'.gtoggle', title:'Grouped by day → project', body:'Your Stream groups work into Days, then Projects, with the newest items at the top of each group as they come in. You can also switch to by day / by tag.'},
+  {sel:'.buildpane', title:'Combine into a draft', body:'Drag related work items here — or use the ⊕ combine buttons on a day or project — to compose one worklog or handoff draft.'},
+  {sel:'#themesel', title:'Themes', body:'Switch between Auto, Dark (Slate, Midnight, Nord) and Light (Paper, Solarized) anytime. Your choice is remembered.'},
+  {sel:'#menubtn', title:"That's it!", body:'Open this menu (☰) anytime to replay the tour. Now go run some commands — your work shows up in the Stream automatically.'},
+];
+let tourI=-1;
+function startTour(){ cur='Stream'; load(); tourI=0; setTimeout(showTourStep,150); }
+function endTour(){ tourI=-1; const ov=document.getElementById('tourov'); if(ov)ov.remove(); try{localStorage.setItem('scribe-toured','1');}catch(e){} }
+function tourNext(){ if(tourI<TOUR.length-1){tourI++; showTourStep();} else endTour(); }
+function tourBack(){ if(tourI>0){tourI--; showTourStep();} }
+function showTourStep(){
+  const step=TOUR[tourI]; if(!step)return;
+  let ov=document.getElementById('tourov');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='tourov'; ov.className='tour-ov';
+    ov.innerHTML='<div class="tour-ring" id="tourring"></div><div class="tour-card" id="tourcard"></div>';
+    ov.addEventListener('click',e=>{ if(e.target===ov)endTour(); });
+    document.body.appendChild(ov);
+  }
+  const ring=document.getElementById('tourring'), card=document.getElementById('tourcard');
+  const el=step.sel?document.querySelector(step.sel):null;
+  const r=el?el.getBoundingClientRect():null;
+  if(r&&r.width&&r.height){
+    const pad=6; ring.style.display='block';
+    ring.style.left=(r.left-pad)+'px'; ring.style.top=(r.top-pad)+'px';
+    ring.style.width=(r.width+pad*2)+'px'; ring.style.height=(r.height+pad*2)+'px';
+    try{el.scrollIntoView({block:'nearest'});}catch(e){}
+  } else { ring.style.display='none'; }
+  card.innerHTML=`<div class="tour-h">${esc(step.title)}</div><div class="tour-b">${esc(step.body)}</div>
+    <div class="tour-f"><span class="mut" style="font-size:12px">${tourI+1} / ${TOUR.length}</span><span style="flex:1"></span>
+    <button class="btn" onclick="endTour()">Skip</button>
+    ${tourI>0?'<button class="btn" onclick="tourBack()">Back</button>':''}
+    <button class="btn go" onclick="tourNext()">${tourI<TOUR.length-1?'Next':'Done'}</button></div>`;
+  card.style.visibility='hidden'; card.style.left='0px'; card.style.top='0px';
+  requestAnimationFrame(()=>{
+    const cw=card.offsetWidth, ch=card.offsetHeight, vw=innerWidth, vh=innerHeight;
+    let left, top;
+    if(r&&r.width&&r.height){
+      top=r.bottom+14; if(top+ch>vh-10) top=Math.max(10,r.top-ch-14);
+      left=Math.min(Math.max(10,r.left), vw-cw-10);
+    } else { left=(vw-cw)/2; top=(vh-ch)/2; }
+    card.style.left=left+'px'; card.style.top=top+'px'; card.style.visibility='visible';
+  });
+}
+window.addEventListener('keydown',e=>{ if(tourI<0)return; if(e.key==='Escape')endTour(); else if(e.key==='ArrowRight')tourNext(); else if(e.key==='ArrowLeft')tourBack(); });
+window.addEventListener('resize',()=>{ if(tourI>=0)showTourStep(); });
+
+initTheme();
+refresh().then(()=>{
+  lastSig=sigOf(state); load();
+  // Auto-start the tour the first time this browser opens the panel.
+  let toured=null; try{toured=localStorage.getItem('scribe-toured');}catch(e){}
+  if(!toured) setTimeout(startTour,600);
+});
 function sigOf(s){return JSON.stringify([s.counts,s.binding,s.capture_live]);}
 // Live refresh: update the bar/nav every few seconds, and reload the active
 // tab's content only when the underlying data actually changed — and never
 // while the engineer is mid-edit or has the bind picker open (busy()).
 setInterval(async()=>{
-  if(busy())return;
+  if(busy()||tourI>=0)return;
   state=await api('/api/state');
   draw();
   const sig=sigOf(state);
