@@ -1,0 +1,8 @@
+# Rust build output
+/target/
+
+# Scribe local runtime data (raw capture never belongs in VCS)
+.scribe/
+
+# Packaging output
+/dist/

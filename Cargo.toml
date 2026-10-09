@@ -1,0 +1,22 @@
+[package]
+name = "scribe"
+version = "0.1.0"
+edition = "2021"
+description = "Passive per-engineer work capture -> draft Jira/Confluence artifacts (prototype)"
+
+[[bin]]
+name = "scribe"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+regex = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+tiny_http = "0.12"
+ureq = "2"
+portable-pty = "0.8"
+
+[profile.release]
+opt-level = 2

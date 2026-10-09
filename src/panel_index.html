@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scribe</title>
+<link rel="stylesheet" href="/xterm.css">
+<script src="/xterm.js"></script>
+<script src="/addon-fit.js"></script>
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--line:#262b35;--fg:#e6e9ef;--mut:#8b94a7;
+--accent:#6ea8fe;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--chip:#1f2530;}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+background:var(--bg);color:var(--fg)}
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line);
+position:sticky;top:0;background:var(--bg);z-index:5}
+header h1{font-size:16px;margin:0;letter-spacing:.3px}
+.bind{margin-left:auto;font-size:13px;color:var(--mut)}
+.bind b{color:var(--accent)}
+nav{display:flex;flex-wrap:wrap;gap:4px;padding:0 20px;border-bottom:1px solid var(--line);background:var(--bg);
+position:sticky;top:49px;z-index:4}
+nav button{background:none;border:0;color:var(--mut);padding:12px 14px;cursor:pointer;
+font-size:13px;border-bottom:2px solid transparent}
+nav button.on{color:var(--fg);border-bottom-color:var(--accent)}
+nav .count{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;
+background:var(--chip);font-size:11px;color:var(--mut)}
+main{padding:20px;max-width:none;margin:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:10px 0}
+.row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.tag{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--chip);color:var(--mut)}
+.tag.planned{color:var(--ok)} .tag.interrupt{color:var(--warn)} .tag.unaccounted{color:var(--bad)}
+.key{color:var(--accent);font-weight:600}
+.mut{color:var(--mut)} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.summary{margin:8px 0;color:var(--fg)}
+.btn{background:var(--chip);border:1px solid var(--line);color:var(--fg);border-radius:7px;
+padding:6px 12px;cursor:pointer;font-size:13px}
+.btn:hover{border-color:var(--accent)}
+.btn.ok{color:var(--ok)} .btn.bad{color:var(--bad)} .btn.go{background:var(--accent);color:#06121f;border-color:var(--accent)}
+.actions{display:flex;gap:8px;margin-top:10px}
+pre{white-space:pre-wrap;background:#10131a;border:1px solid var(--line);border-radius:7px;
+padding:10px;margin:8px 0;font-family:ui-monospace,monospace;font-size:12.5px;color:#cdd3df}
+textarea{width:100%;min-height:150px;background:#10131a;color:var(--fg);border:1px solid var(--line);
+border-radius:7px;padding:10px;font-family:ui-monospace,monospace;font-size:12.5px}
+.ev{display:grid;grid-template-columns:120px 70px 1fr;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:12.5px}
+.ev:first-child{border-top:0}
+.status{font-size:11px;padding:2px 8px;border-radius:20px}
+.status.draft{background:#1f2530;color:var(--mut)}
+.status.approved{background:#14331f;color:var(--ok)}
+.status.published{background:#102a3a;color:var(--accent)}
+.status.discarded{background:#331616;color:var(--bad)}
+.empty{color:var(--mut);padding:30px;text-align:center}
+.toolbar{display:flex;gap:8px;margin-bottom:12px}
+small.src{color:var(--mut)}
+label{display:block;margin:12px 0 4px;color:var(--mut);font-size:12px}
+input[type=number],input[type=text]{background:#10131a;color:var(--fg);border:1px solid var(--line);
+border-radius:6px;padding:6px 8px;width:140px}
+#bar{display:flex;align-items:center;gap:10px;padding:8px 20px;border-bottom:1px solid var(--line);
+background:var(--panel);position:sticky;top:49px;z-index:4;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.on{background:var(--ok);box-shadow:0 0 6px var(--ok)} .dot.off{background:var(--warn)}
+#bar .now{font-size:12px}
+#bar .btn{padding:4px 10px;font-size:12.5px}
+.binfo{font-size:13px} .binfo b{color:var(--accent)}
+.picker{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:4px}
+.chip{cursor:pointer;font-size:12px;padding:3px 9px;border-radius:20px;background:var(--chip);
+border:1px solid var(--line);color:var(--fg)}
+.chip:hover{border-color:var(--accent)}
+.capwarn{background:#2a2410;border:1px solid #5c4a12;color:var(--warn);padding:8px 12px;border-radius:8px;
+margin:10px 0;font-size:12.5px}
+.capwarn code{background:#10131a;padding:2px 6px;border-radius:4px;color:var(--fg)}
+nav{top:93px}
+.srow{display:grid;grid-template-columns:26px 104px 74px 1fr auto;gap:10px;align-items:start;padding:9px 16px;border-top:1px solid var(--line)}
+.srow:first-child{border-top:0}
+.srow.sel{background:var(--chip)}
+.sdir{font-size:10.5px;padding:2px 8px;border-radius:20px;background:var(--chip);white-space:nowrap;align-self:start}
+.sdir.work{color:var(--accent)} .sdir.out{color:var(--ok)} .sdir.in{color:var(--warn)}
+.stime{font-size:12px;white-space:nowrap} .scheck{padding-top:1px}
+.stitle{min-width:0;font-size:13.5px}
+.sdet{font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sact{white-space:nowrap;align-self:center}
+select.btn{padding:6px 8px}
+@media (max-width:560px){.srow{grid-template-columns:24px 1fr auto}.stime,.sdir{display:none}}
+/* humanized stream feed */
+.sday{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:600;padding:18px 4px 4px;display:flex;align-items:center}
+.daybtn{margin-left:10px;padding:2px 9px;font-size:11px;letter-spacing:.02em;text-transform:none;opacity:.55}
+.daybtn:hover{opacity:1;border-color:var(--accent)}
+.frow{display:grid;grid-template-columns:14px 10px 1fr auto auto;gap:10px;align-items:start;
+padding:10px 13px;border:1px solid var(--line);border-radius:10px;background:var(--panel);margin:7px 0}
+.frow[draggable=true]{cursor:grab} .frow[draggable=true]:active{cursor:grabbing}
+.frow.sel{outline:2px solid var(--accent);outline-offset:-1px}
+.fdot{margin-top:5px} .ftime,.fact{align-self:center}
+.fexp{cursor:pointer;color:var(--mut);font-size:12px;user-select:none;align-self:center;text-align:center}
+.fexp:hover{color:var(--fg)}
+.schip.tkt{background:#102a3a;color:var(--accent);border:1px solid #1d3a52;margin-left:8px}
+.schip.tag{background:#1c2a1c;color:#86d17a;border:1px solid #2d4a2d;margin-left:6px}
+.fdetail{margin-top:10px;padding:10px 12px;background:#0b0e14;border:1px solid var(--line);border-radius:8px}
+.fdetail .cmd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#cdd3df;white-space:pre-wrap;padding:1px 0}
+.fdetail .cmt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#86d17a;padding:1px 0}
+.tagin{background:#10131a;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;width:150px;font-size:12.5px}
+.tagbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 2px}
+.tfilter{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--chip);border:1px solid var(--line);color:var(--mut);cursor:pointer}
+.tfilter:hover{border-color:var(--accent)} .tfilter.on{color:var(--fg);border-color:var(--accent);background:#102a3a}
+.rlink{font-size:12px;color:var(--accent);cursor:pointer}
+.gtoggle{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-right:4px}
+.gopt{font-size:12px;padding:3px 11px;color:var(--mut);cursor:pointer}
+.gopt:hover{color:var(--fg)} .gopt.on{color:var(--fg);background:#102a3a}
+.wltotals{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.wlbar{display:flex;align-items:center;gap:12px;padding:7px 10px;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+.wlproj{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.wlsecs b{color:var(--accent)}
+.wlrow{display:flex;align-items:center;gap:10px;font-size:12.5px;padding:6px 2px;border-bottom:1px solid var(--line)}
+.wltime{width:118px;flex:none;font-size:11.5px} .wldur{width:64px;flex:none} .wldur b{color:var(--accent)}
+.wlp{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wlc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.selbar{margin:8px 0;padding:8px 12px;border:1px solid var(--accent);border-radius:8px;background:#102a3a;font-size:12.5px;color:var(--fg)}
+.lgrow{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);margin:6px 0}
+.lgrow .fmain{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex:1;min-width:0}
+.lghead{font-weight:600;font-size:13.5px}
+.lgtitle{font-size:12.5px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bdrow{display:flex;gap:14px;align-items:baseline;font-size:12.5px;padding:3px 0}
+.bdsecs{color:var(--accent);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-width:64px}
+.rulesbox{border:1px solid var(--line);border-radius:9px;padding:8px;margin:6px 0;background:var(--panel);display:flex;flex-direction:column;gap:5px}
+.rulerow{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.rprefix{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rdel{color:var(--bad);cursor:pointer;font-size:12px} .rdel:hover{text-decoration:underline}
+.timebar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;font-size:12.5px;margin:6px 0 2px;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:9px}
+.timebar .tk{color:var(--mut)} .timebar b{color:var(--fg)}
+.timebar .grp{color:var(--mut);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-right:2px}
+.fdur{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--accent)}
+.fdot{width:9px;height:9px;border-radius:50%;background:var(--mut)}
+.role-work .fdot{background:var(--accent)}
+.role-interrupt .fdot{background:var(--warn)}
+.role-unacc .fdot{background:var(--mut)}
+.role-draft{border-left:3px solid var(--warn)} .role-draft .fdot{background:var(--warn)}
+.role-sent{opacity:.7} .role-sent .fdot{background:var(--ok)}
+.role-in{border-left:3px solid #2f4fd4} .role-in .fdot{background:#6ea8fe}
+.schip.inbound{background:#111f33;color:#86a6ff;border:1px solid #243a5e}
+.fmain{min-width:0}
+.fhead{font-weight:600;font-size:14px}
+.ftag{font-size:12.5px;color:var(--mut)}
+.sdet{font-size:12px;color:var(--mut);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ftime{font-size:12px;white-space:nowrap} .fact{white-space:nowrap}
+.schip{font-size:11px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.fmain .schip{margin-left:8px}
+.schip.draft{background:#2a2410;color:var(--warn);border:1px solid #5c4a12}
+.schip.approved{background:#102a3a;color:var(--accent);border:1px solid #1d3a52}
+.schip.published{background:#12271f;color:var(--ok);border:1px solid #1d3f2e}
+.fx{font-family:var(--mono);font-size:12px;color:var(--accent);margin-right:6px}
+.fact .btn{padding:4px 9px;font-size:12px}
+/* two-pane builder */
+.streamwrap{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+.feedpane{min-width:0}
+.buildpane{position:sticky;top:104px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.dropzone{min-height:150px;border:2px dashed var(--line);border-radius:10px;padding:10px;margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.dropzone.over{border-color:var(--accent);background:var(--chip)}
+.dzhint{font-size:12.5px;margin:auto;text-align:center;padding:14px;color:var(--mut)}
+.bchip{display:flex;justify-content:space-between;gap:8px;background:var(--chip);border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:12.5px}
+.bchip .x{cursor:pointer;color:var(--mut)} .bchip .x:hover{color:var(--bad)}
+.builtbox{margin-top:12px;padding:10px 12px;border:1px solid #1d3f2e;background:#12271f;border-radius:9px;color:var(--ok);font-size:13px}
+@media (max-width:620px){.frow{grid-template-columns:9px 1fr auto}.ftime{display:none}}
+@media (max-width:820px){.streamwrap{grid-template-columns:1fr}.buildpane{position:static}}
+/* terminal tabs + big scrollback output */
+.tterms{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.tterm{background:var(--chip);border:1px solid var(--line);color:var(--mut);border-radius:7px 7px 0 0;
+padding:6px 12px;cursor:pointer;font-size:12.5px;display:flex;align-items:center;gap:7px}
+.tterm.on{color:var(--fg);background:#0b0e14;border-bottom-color:#0b0e14}
+.tterm .x{color:var(--mut);font-size:15px;line-height:1}
+.tterm .x:hover{color:var(--bad)}
+.tterm.add{color:var(--accent);border-radius:7px}
+pre.term{min-height:460px;height:64vh;max-height:none;overflow:auto;background:#0b0e14;border:1px solid var(--line);
+border-radius:0 7px 7px 7px;padding:12px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;color:#d6dbe6;resize:vertical}
+#ptymount{height:66vh;min-height:420px;background:#0b0e14;border:1px solid var(--line);border-radius:0 7px 7px 7px;padding:6px 8px;overflow:hidden}
+.xtermhost{height:100%;width:100%}
+.xterm{height:100%}
+</style></head>
+<body>
+<header><h1>🪶 Scribe</h1><div class="bind" id="bind">…</div></header>
+<div id="bar"></div>
+<nav id="nav"></nav>
+<div id="cap"></div>
+<main id="main"></main>
+<script>
+const TABS=["Stream","Logged","Terminal","Ansible","Scratchpad","Timeline","Episodes","Drafts","Unaccounted","Prompts","Settings"];
+let state={}, cur="Stream", pickerOpen=false, streamSel=new Set();
+const fmt=t=>new Date(t*1000).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+const esc=s=>(s||"").replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+async function api(u,opt){const r=await fetch(u,opt);return r.json();}
+async function refresh(){state=await api('/api/state');draw();}
+// Something is mid-interaction (editing a draft, or the bind picker is open) —
+// used to suppress destructive live reloads.
+function busy(){return pickerOpen || !!document.querySelector('textarea');}
+function drawNav(){
+  const n=document.getElementById('nav');n.innerHTML='';
+  TABS.forEach(t=>{const b=document.createElement('button');b.textContent=t;
+    if(t===cur)b.className='on';
+    const c=state.counts&&state.counts[t.toLowerCase()];
+    if(c)b.innerHTML+=`<span class="count">${c}</span>`;
+    b.onclick=()=>{cur=t;load();};n.appendChild(b);});
+  const bd=state.binding;
+  document.getElementById('bind').innerHTML = bd&&bd.ticket
+    ? `bound to <b>${bd.ticket}</b> <span class="mut">(${bd.source})</span>`
+    : `⚠ <span class="mut">no active ticket</span>`;
+}
+function drawBar(){
+  const bd=state.binding, live=state.capture_live;
+  let h=`<span class="dot ${live?'on':'off'}" title="${live?'capturing':'no recent capture'}"></span>`;
+  h+=`<span class="binfo">${bd&&bd.ticket?`Active: <b>${bd.ticket}</b> <span class="mut">(${bd.source})</span>`:'<span class="mut">no active ticket</span>'}</span>`;
+  h+=`<span class="picker" id="picker"></span>`;
+  h+=`<span style="flex:1"></span>`;
+  h+=`<button class="btn" onclick="openPicker()">Bind…</button>`;
+  h+=`<button class="btn" onclick="doInterrupt()">Mark interrupt</button>`;
+  h+=`<button class="btn go" onclick="reprocess()">↻ Process</button>`;
+  h+=`<span class="now mut">${(state.now||'').replace('T',' ')}</span>`;
+  document.getElementById('bar').innerHTML=h;
+  if(pickerOpen)renderPicker();
+}
+function drawCap(){
+  const el=document.getElementById('cap');if(!el)return;
+  if(state.capture_live){el.innerHTML='';return;}
+  el.innerHTML=`<div style="margin:10px 0;padding:0 20px"><div class="capwarn">
+    ⚠ No capture in the last 10 min. In the terminal you work in, run once:
+    <code>source "${esc(state.snippet||'')}"</code> — then commands you type there show up here live.</div></div>`;
+}
+function draw(){drawNav();drawBar();drawCap();}
+async function openPicker(){pickerOpen=true;await renderPicker();}
+async function renderPicker(){
+  const el=document.getElementById('picker');if(!el)return;
+  const d=await api('/api/candidates');
+  let h=`<input type="text" id="bindin" placeholder="OPS-1234" style="width:120px" onkeydown="if(event.key==='Enter')bindTo(this.value)">`;
+  h+=`<button class="btn ok" onclick="bindTo(document.getElementById('bindin').value)">Bind</button>`;
+  (d.candidates||[]).forEach(c=>{h+=`<span class="chip" onclick="bindTo('${c.key}')">${c.key}</span>`;});
+  h+=`<button class="btn" onclick="pickerOpen=false;draw()">✕</button>`;
+  el.innerHTML=h;
+}
+async function bindTo(t){
+  if(!t||!t.trim())return;
+  const r=await api('/api/bind',{method:'POST',body:JSON.stringify({ticket:t.trim()})});
+  pickerOpen=false; await refresh();
+}
+async function doInterrupt(){
+  await api('/api/interrupt',{method:'POST'}); await refresh();
+}
+async function load(){
+  drawNav();const m=document.getElementById('main');m.innerHTML='<div class="empty">Loading…</div>';
+  if(cur==="Timeline")return renderTimeline(m);
+  if(cur==="Episodes")return renderEpisodes(m,false);
+  if(cur==="Unaccounted")return renderEpisodes(m,true);
+  if(cur==="Drafts")return renderDrafts(m);
+  if(cur==="Prompts")return renderPrompts(m);
+  if(cur==="Stream")return renderStream(m);
+  if(cur==="Logged")return renderLogged(m);
+  if(cur==="Terminal")return renderTerminal(m);
+  if(cur==="Ansible")return renderAnsible(m);
+  if(cur==="Scratchpad")return renderScratchpad(m);
+  if(cur==="Settings")return renderSettings(m);
+}
+async function renderTimeline(m){
+  const d=await api('/api/timeline');
+  if(!d.events.length){m.innerHTML='<div class="empty">No captured activity yet. Run some shell/git commands with capture enabled, then Re-process.</div>';return;}
+  let h='<div class="toolbar"><button class="btn go" onclick="reprocess()">↻ Re-process</button></div><div class="card">';
+  d.events.forEach(e=>{
+    const label=e.type==='shell'?(e.exit?`<span style="color:var(--bad)">✗${e.exit}</span>`:'<span style="color:var(--ok)">✓</span>'):e.type;
+    const txt=e.type==='shell'?esc(e.cmd):`${esc(e.action||'')} ${esc(e.key||e.branch||e.msg||'')}`;
+    h+=`<div class="ev"><span class="mut">${fmt(e.ts)}</span><span>${label}</span><span class="mono">${txt} ${e.repo?`<small class="src">@${esc(e.repo)}</small>`:''}</span></div>`;
+  });
+  m.innerHTML=h+'</div>';
+}
+async function renderEpisodes(m,onlyUn){
+  const d=await api('/api/episodes');
+  let eps=d.episodes;if(onlyUn)eps=eps.filter(e=>e.kind==='unaccounted');
+  let h='<div class="toolbar"><button class="btn go" onclick="reprocess()">↻ Re-process</button></div>';
+  if(!eps.length){m.innerHTML=h+'<div class="empty">'+(onlyUn?'Nothing to triage — all activity bound.':'No episodes yet.')+'</div>';return;}
+  eps.forEach(e=>{
+    h+=`<div class="card"><div class="row">
+      <span class="tag ${e.kind}">${e.kind}</span>
+      <span class="tag">${e.activity}</span>
+      ${e.ticket?`<span class="key">${e.ticket}</span>`:'<span class="mut">unbound</span>'}
+      <span class="mut">${fmt(e.start_ts)} → ${fmt(e.end_ts)} · ${e.n_events} events</span></div>
+      <div class="summary">${esc(e.summary)}</div></div>`;
+  });
+  m.innerHTML=h;
+}
+async function renderDrafts(m){
+  const d=await api('/api/drafts');
+  let h='<div class="toolbar"><button class="btn go" onclick="reprocess()">↻ Re-process</button></div>';
+  if(!d.drafts.length){m.innerHTML=h+'<div class="empty">No drafts. Capture activity and Re-process.</div>';return;}
+  d.drafts.forEach(x=>{
+    h+=`<div class="card" id="d${x.id}"><div class="row">
+      <span class="tag">${x.target}</span><span class="tag">${x.kind}</span>
+      ${x.ref_key?`<span class="key">${x.ref_key}</span>`:''}
+      <span class="status ${x.status}">${x.status}</span>
+      <b style="flex:1">${esc(x.title)}</b></div>
+      <pre id="b${x.id}">${esc(x.body)}</pre>
+      <div class="actions">`;
+    if(x.status==='draft'||x.status==='approved'){
+      h+=`<button class="btn" onclick="editDraft(${x.id})">Edit</button>
+          <button class="btn ok" onclick="act(${x.id},'approve')">${x.status==='approved'?'Approved ✓':'Approve'}</button>
+          <button class="btn go" onclick="act(${x.id},'publish')">Publish ↗</button>
+          <button class="btn bad" onclick="act(${x.id},'discard')">Discard</button>`;
+    } else if(x.status==='published'){
+      h+=`<span class="mut">published → ${esc(x.ref_key||'')}</span>`;
+    }
+    h+='</div></div>';
+  });
+  m.innerHTML=h;
+}
+function editDraft(id){
+  const pre=document.getElementById('b'+id);const t=pre.textContent;
+  const ta=document.createElement('textarea');ta.value=t;ta.id='ta'+id;
+  pre.replaceWith(ta);
+  const card=document.getElementById('d'+id);
+  const save=document.createElement('button');save.className='btn ok';save.textContent='Save';
+  save.onclick=async()=>{await api('/api/drafts/'+id+'/edit',{method:'POST',body:JSON.stringify({body:ta.value})});load();};
+  card.querySelector('.actions').prepend(save);
+}
+async function act(id,what){
+  const r=await api('/api/drafts/'+id+'/'+what,{method:'POST'});
+  if(r.ok&&what==='publish'&&r.url){alert('Mock-published as engineer:\n'+r.ref+'\n'+r.url+'\n\nFile: '+r.file);}
+  await refresh();load();
+}
+async function reprocess(){await api('/api/process',{method:'POST'});await refresh();load();}
+const ACTVERB={develop:'coding',debug:'debugging',deploy:'deploying',review:'reviewing',investigate:'investigating'};
+function relTime(ts){
+  const s=Math.max(0,Date.now()/1000-ts);
+  if(s<45)return 'just now';
+  if(s<3600)return Math.round(s/60)+'m ago';
+  if(s<86400)return Math.round(s/3600)+'h ago';
+  if(s<172800)return 'yesterday';
+  return Math.round(s/86400)+'d ago';
+}
+function dayKey(ts){const d=new Date(ts*1000);return d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();}
+function dayLabel(ts){
+  const tk=dayKey(Date.now()/1000), yk=dayKey(Date.now()/1000-86400), dk=dayKey(ts);
+  if(dk===tk)return 'Today';
+  if(dk===yk)return 'Yesterday';
+  return new Date(ts*1000).toLocaleDateString([], {weekday:'long',month:'short',day:'numeric'});
+}
+// ---- Stream: two-pane builder (activity feed + drag-to-combine) ----
+let streamItems={}, buildIds=[], builtDraftId=null, expanded=new Set(), tagFilter='', showRules=false, groupMode='day';
+function prettyCwd(p){ if(!p)return ''; return p.replace(/^\/home\/[^/]+/,'~'); }
+function fmtDur(s){ s=Math.round(s||0); if(s<60)return s+'s'; const m=Math.round(s/60); if(m<60)return m+'m'; return Math.floor(m/60)+'h '+(m%60)+'m'; }
+// Parse a human duration like "1h30m", "45m", "90s" or a bare number (minutes).
+// Returns seconds, or -1 to clear an override (empty input).
+function parseDur(s){
+  s=(s||'').trim().toLowerCase(); if(!s)return -1;
+  let total=0,m,any=false; const re=/(\d+(?:\.\d+)?)\s*([hms])/g;
+  while((m=re.exec(s))){any=true; const n=parseFloat(m[1]); total+= m[2]==='h'?n*3600:(m[2]==='m'?n*60:n);}
+  if(!any){const n=parseFloat(s); return isNaN(n)?-1:n*60;}
+  return total;
+}
+function humanItem(it){
+  const base={head:'',tag:'',chip:'',chipcls:'',note:'',flag:'',action:'',full:it.detail||'',drag:false};
+  if(it.dir==='in'){
+    const label=it.kind==='mr'?'MR · assigned to you':(it.kind==='mr-review'?'MR · needs your review':'Jira · assigned to you');
+    let action=it.url?`<a href="${esc(it.url)}" target="_blank" class="btn">open ↗</a>`:'';
+    if(it.ticket)action+=`<button class="btn go" onclick="bindTo('${esc(it.ticket)}')">Work on it</button>`;
+    return {...base, role:'in', head:it.title||it.ticket||'(incoming)', chip:label, chipcls:'inbound',
+      note:it.detail||'', ticket:it.ticket||'', action};
+  }
+  if(it.kind==='published'){
+    return {...base, role:'sent', head:'Sent'+(it.ticket?' · '+it.ticket:''), note:it.detail||'', chip:'sent', chipcls:'published',
+      action: it.url?`<a href="${esc(it.url)}" target="_blank" class="btn">open ↗</a>`:''};
+  }
+  if(it.dir==='out'){
+    let head='Draft', does='';
+    if(it.kind==='jira_worklog'){head='Worklog'+(it.ticket?' · '+it.ticket:''); does='Will log time on '+(it.ticket||'the ticket');}
+    else if(it.kind==='jira_new'){head='New ticket'; does='Will create a Jira issue';}
+    else if(it.kind==='confluence_handoff'){head='Handoff note'; does='Will publish a Confluence page';}
+    const st=it.status||'draft';
+    const chip=st==='approved'?'ready to send':(st==='published'?'sent':'needs you');
+    const chipcls=st==='approved'?'approved':(st==='published'?'published':'draft');
+    let action='';
+    if(st==='draft'||st==='approved')
+      action=`<button class="btn go" onclick="sendDraft(${it.draft_id})">Send</button><button class="btn" onclick="cur='Drafts';load()">Edit</button><button class="btn bad" onclick="discardDraft(${it.draft_id})">Discard</button>`;
+    return {...base, role:'draft', head, note:does, chip, chipcls, action};
+  }
+  const activity=(it.title.split('·')[0]||'').trim().toLowerCase();
+  const verb=ACTVERB[activity]||activity||'work';
+  const interrupt=it.status==='interrupt', unacc=it.status==='unaccounted';
+  const det=it.detail||'';
+  const fails=(det.match(/(\d+) command\(s\) exited non-zero/)||[])[1];
+  const where=prettyCwd(it.cwd)||(it.ticket?'':'Untracked');
+  // Headline is the working directory (most informative); ticket shown as a chip.
+  const head=where||it.ticket||'Untracked';
+  return {...base, role: interrupt?'interrupt':(unacc?'unacc':'work'), head,
+    tag: verb+(interrupt?' · interruption':''), flag: fails?(fails+' failed'):'', drag:true,
+    cwd:it.cwd||'', branch:it.branch||'', ticket:it.ticket||'',
+    commands:it.commands||[], commits:it.commits||[], tags:it.tags||[], dur:it.dur||0};
+}
+function feedRow(x, ids, ts, n, idKey){
+  const chip=x.chip?`<span class="schip ${x.chipcls}">${x.chip}</span>`:'';
+  const flag=x.flag?`<span class="schip draft">${esc(x.flag)}</span>`:'';
+  const count=(n&&n>1)?`<span class="fx">${n}×</span>`:'';
+  const tchip=x.ticket?`<span class="schip tkt">${esc(x.ticket)}</span>`:'';
+  const tags=(x.tags||[]).map(t=>`<span class="schip tag">${esc(t)}</span>`).join('');
+  const dragAttr=x.drag?`draggable="true" ondragstart="dragStart(event,'${ids}')"`:'';
+  const isWork=x.role!=='sent'&&x.action!==undefined&&x.drag;
+  const open=idKey&&expanded.has(idKey);
+  let detail='';
+  if(isWork&&open){
+    const cmds=(x.commands||[]).slice(0,40).map(c=>`<div class="cmd">$ ${esc(c)}</div>`).join('')||'<div class="mut">no shell commands captured</div>';
+    const commits=(x.commits||[]).map(c=>`<div class="cmt">⎇ ${esc(c)}</div>`).join('');
+    detail=`<div class="fdetail">
+      <div class="mut mono" style="font-size:12px;margin-bottom:6px">${esc(x.cwd||'')}${x.branch?' · '+esc(x.branch):''}</div>
+      ${commits}${cmds}
+      <div class="actions"><span class="mut" style="font-size:12px">Tag this directory →</span>
+        <input type="text" class="tagin" id="tagin-${idKey}" placeholder="e.g. Farsight" onkeydown="if(event.key==='Enter')saveTag('${idKey}','${esc((x.cwd||'').replace(/'/g,''))}')">
+        <button class="btn" onclick="saveTag('${idKey}','${esc((x.cwd||'').replace(/'/g,''))}')">Add tag</button></div>
+      <div class="actions"><span class="mut" style="font-size:12px">Time spent →</span>
+        <input type="text" class="tagin" id="timein-${idKey}" value="${fmtDur(x.dur)}" style="width:80px" onkeydown="if(event.key==='Enter')saveTime('${ids}','${idKey}')">
+        <button class="btn" onclick="saveTime('${ids}','${idKey}')">Set</button>
+        <button class="btn" onclick="saveTime('${ids}','${idKey}',true)">Reset</button>
+        <span class="mut" style="font-size:11px">e.g. 45m · 1h30m · 90s</span></div>
+    </div>`;
+  }
+  const note=x.note?`<div class="sdet">${esc(x.note)}</div>`:'';
+  const expander=isWork?`<span class="fexp" onclick="toggleExpand('${idKey}')">${open?'▾':'▸'}</span>`:'<span class="fexp"></span>';
+  return `<div class="frow role-${x.role}" ${dragAttr} title="${esc(x.full)}">
+    ${expander}
+    <span class="fdot"></span>
+    <span class="fmain">${count}<span class="fhead mono">${esc(x.head)}</span>${x.tag?` <span class="ftag">${esc(x.tag)}</span>`:''}${tchip}${tags}${chip}${flag}${note}${detail}</span>
+    <span class="ftime mut">${relTime(ts)}${x.dur?` · <span class="fdur">${fmtDur(x.dur)}</span>`:''}</span>
+    <span class="fact">${x.action}</span></div>`;
+}
+async function renderStream(m){
+  const d=await api('/api/stream'); const items=d.items||[];
+  streamItems={}; items.forEach(it=>streamItems[it.id]=it);
+  let rules=[]; try{rules=(await api('/api/rules')).rules||[];}catch(e){}
+  const allTags=[...new Set(items.flatMap(it=>it.tags||[]))].sort();
+  const needs=items.filter(it=>it.dir==='out'&&(it.status==='draft'||it.status==='approved')).length;
+  // Filter to one tag's work when a tag filter is active (day grouping only).
+  const shown = tagFilter? items.filter(it=>it.dir==='work'&&(it.tags||[]).includes(tagFilter)) : items;
+  const feed = groupMode==='tag' ? feedByTag(items) : feedByDay(shown);
+  const grouptoggle=`<span class="gtoggle"><span class="gopt ${groupMode==='day'?'on':''}" onclick="setGroup('day')">by day</span><span class="gopt ${groupMode==='tag'?'on':''}" onclick="setGroup('tag')">by tag</span></span>`;
+  const tagbar=`<div class="tagbar">
+    ${grouptoggle}
+    ${groupMode==='day'?`<span class="tfilter ${tagFilter?'':'on'}" onclick="setFilter('')">All</span>
+    ${allTags.map(t=>`<span class="tfilter ${tagFilter===t?'on':''}" onclick="setFilter('${esc(t)}')">${esc(t)}</span>`).join('')}
+    ${tagFilter?`<button class="btn go" style="padding:3px 10px;font-size:12px" onclick="combineAllTag()">⊕ combine all ${esc(tagFilter)}</button>`:''}`:''}
+    <span style="flex:1"></span>
+    <span class="rlink" onclick="showRules=!showRules;load()">${showRules?'hide rules':'manage rules'}</span></div>
+    ${showRules?rulesHtml(rules):''}`;
+  const inb=state.inbox||{};
+  const fetched=inb.fetched_ts?` <span class="mut" style="font-size:11px">· updated ${relTime(inb.fetched_ts)}</span>`:'';
+  const inboxBtn = (inb.gitlab||inb.jira)
+    ? `<span class="rlink" onclick="refreshInbox()">↻ refresh inbox${inb.count?' ('+inb.count+')':''}</span>${fetched}`
+    : `<span class="mut" style="font-size:12px">inbox: connect GitLab/Jira in Settings</span>`;
+  // Time today, grouped by ticket and tag (sums across interleaved work).
+  const tdk=dayKey(Date.now()/1000);
+  const tw=items.filter(it=>it.dir==='work'&&dayKey(it.ts)===tdk);
+  const byTicket={}, byTag={}; let untracked=0, total=0;
+  tw.forEach(it=>{const u=it.dur||0; total+=u;
+    if(it.ticket)byTicket[it.ticket]=(byTicket[it.ticket]||0)+u;
+    (it.tags||[]).forEach(t=>byTag[t]=(byTag[t]||0)+u);
+    if(!it.ticket&&!(it.tags||[]).length)untracked+=u;});
+  const timebar = total>0? `<div class="timebar">
+    <span><span class="grp">today</span><b>${fmtDur(total)}</b></span>
+    ${Object.keys(byTicket).length?`<span class="grp">tickets</span>${timeRow(byTicket)}`:''}
+    ${Object.keys(byTag).length?`<span class="grp">tags</span>${timeRow(byTag)}`:''}
+    ${untracked?`<span class="tk">untracked <b>${fmtDur(untracked)}</b></span>`:''}
+  </div>` : '';
+  m.innerHTML=`<div class="streamwrap">
+    <div class="feedpane">
+      <div class="row" style="margin-bottom:4px"><b>Activity</b><span class="mut">drag work → to combine</span><span style="flex:1"></span>${inboxBtn}${needs?`<span class="schip draft">${needs} need you</span>`:''}</div>
+      ${timebar}
+      ${tagbar}
+      ${feed?feed:'<div class="empty">'+(tagFilter?('No work tagged “'+esc(tagFilter)+'”.'):'Nothing yet — work in the Terminal and it shows up here.')+'</div>'}
+    </div>
+    <div class="buildpane" id="buildpane">${buildHtml()}</div>
+  </div>`;
+}
+function rulesHtml(rules){
+  if(!rules.length)return '<div class="rulesbox mut">No tag rules yet. Expand a work item and tag its directory.</div>';
+  return '<div class="rulesbox">'+rules.map(r=>`<div class="rulerow"><span class="schip tag">${esc(r.tag)}</span><span class="mut mono rprefix">${esc(r.prefix)}</span><span class="rdel" onclick="removeTag('${esc((r.prefix||'').replace(/'/g,''))}','${esc((r.tag||'').replace(/'/g,''))}')">remove</span></div>`).join('')+'</div>';
+}
+function setFilter(t){ tagFilter=t; load(); }
+function setGroup(g){ groupMode=g; load(); }
+// Render a flat list of items (already ordered), collapsing consecutive identical
+// work into N× rows. No section headers — callers add those.
+function renderItems(list){
+  let feed='', i=0;
+  while(i<list.length){
+    const it=list[i], x=humanItem(it);
+    if(it.dir==='work'){
+      let j=i, ids=[], last=it.ts, cmds=[], commits=[], dursum=0; const key='wk-'+it.id;
+      while(j<list.length&&list[j].dir==='work'){
+        const xj=humanItem(list[j]);
+        if(xj.head!==x.head||xj.tag!==x.tag)break;
+        ids.push(list[j].id); last=list[j].ts;
+        cmds=cmds.concat(xj.commands||[]); commits=commits.concat(xj.commits||[]); dursum+=xj.dur||0; j++;
+      }
+      feed+=feedRow({...x,commands:cmds,commits:commits,dur:dursum}, ids.join(','), last, ids.length, key); i=j;
+    } else { feed+=feedRow(x, it.id, it.ts, 1, null); i++; }
+  }
+  return feed;
+}
+// Day grouping: a section per calendar day with a "combine this day" button.
+function feedByDay(list){
+  let feed='', i=0;
+  while(i<list.length){
+    const dk=dayKey(list[i].ts), dl=dayLabel(list[i].ts);
+    let run=[]; while(i<list.length&&dayKey(list[i].ts)===dk){run.push(list[i]);i++;}
+    feed+=`<div class="sday">${dl}<button class="btn daybtn" onclick="combineDay('${dk}')">⊕ combine this day</button></div>`+renderItems(run);
+  }
+  return feed;
+}
+// Tag grouping: inbound/drafts first, then a section per tag (with a "combine all
+// <tag>" button), then untagged work last.
+function feedByTag(items){
+  const work=items.filter(it=>it.dir==='work'), other=items.filter(it=>it.dir!=='work');
+  let feed='';
+  if(other.length) feed+=`<div class="sday">Updates &amp; drafts</div>`+renderItems(other);
+  const tags=[...new Set(work.flatMap(it=>it.tags||[]))].sort();
+  tags.forEach(t=>{
+    const list=work.filter(it=>(it.tags||[]).includes(t));
+    feed+=`<div class="sday">${esc(t)}<button class="btn daybtn" onclick="combineTag('${esc(t)}')">⊕ combine all ${esc(t)}</button></div>`+renderItems(list);
+  });
+  const untagged=work.filter(it=>!(it.tags||[]).length);
+  if(untagged.length) feed+=`<div class="sday">Untagged</div>`+renderItems(untagged);
+  return feed;
+}
+async function saveTime(ids,key,reset){
+  const el=document.getElementById('timein-'+key);
+  const secs=reset?-1:parseDur(el?el.value:'');
+  const list=(ids||'').split(',').filter(Boolean);
+  if(!list.length)return;
+  await api('/api/stream/time',{method:'POST',body:JSON.stringify({ids:list,secs})});
+  await refresh(); load();
+}
+async function refreshInbox(){ await api('/api/inbox/refresh',{method:'POST'}); await refresh(); load(); }
+function addToBuild(pred){
+  Object.values(streamItems).filter(it=>it.dir==='work'&&(tagFilter?(it.tags||[]).includes(tagFilter):true)&&pred(it))
+    .forEach(it=>{if(!buildIds.includes(it.id))buildIds.push(it.id);});
+  builtDraftId=null; renderBuild();
+}
+function combineAllTag(){ addToBuild(()=>true); }
+function combineDay(dk){ addToBuild(it=>dayKey(it.ts)===dk); }
+// Add every work item carrying `tag` (independent of the current filter).
+function combineTag(tag){
+  Object.values(streamItems).filter(it=>it.dir==='work'&&(it.tags||[]).includes(tag))
+    .forEach(it=>{if(!buildIds.includes(it.id))buildIds.push(it.id);});
+  builtDraftId=null; renderBuild();
+}
+function clearBuild(){ buildIds=[]; builtDraftId=null; renderBuild(); }
+function timeRow(obj){ return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k,v])=>`<span class="tk"><b>${esc(k)}</b> ${fmtDur(v)}</span>`).join(''); }
+async function removeTag(prefix,tag){ await api('/api/rules/delete',{method:'POST',body:JSON.stringify({prefix,tag})}); await refresh(); load(); }
+function buildHtml(){
+  const chips=buildIds.map(id=>{const it=streamItems[id]; const x=it?humanItem(it):null; const t=x?((x.head||id)+(x.tag?' · '+x.tag:'')):id;
+    return `<div class="bchip"><span>${esc(t)}</span><span class="x" onclick="unbuild('${id}')">×</span></div>`;}).join('');
+  const built=builtDraftId?`<div class="builtbox">✓ Combined draft ready
+    <div class="actions"><button class="btn go" onclick="sendDraft(${builtDraftId},true)">Send it</button><button class="btn" onclick="cur='Drafts';load()">Open to edit</button></div></div>`:'';
+  return `<div class="row" style="align-items:center"><b>Combine into one</b>${buildIds.length?` <span class="schip tkt">${buildIds.length}</span>`:''}<span style="flex:1"></span>${buildIds.length?`<span class="rlink" onclick="clearBuild()">clear</span>`:''}</div>
+    <div class="dropzone${buildIds.length?' has':''}" id="dropzone" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="dropItems(event)">
+      ${buildIds.length?chips:'<div class="mut dzhint">Drag work items here to combine them into one handoff or worklog.</div>'}
+    </div>
+    <div class="row" style="margin-top:10px">
+      <select id="compkind" class="btn"><option value="confluence_handoff">as Handoff</option><option value="jira_worklog">as Worklog</option></select>
+      <input type="text" id="compticket" placeholder="ticket #" style="width:84px">
+      <button class="btn go" onclick="composeBuild()" ${buildIds.length?'':'disabled'}>Create draft</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" onclick="saveLocalBuild()" ${buildIds.length?'':'disabled'}>⏱ Log time locally</button>
+      <button class="btn bad" onclick="disposeBuild()" ${buildIds.length?'':'disabled'}>Dispose</button>
+    </div>
+    <div class="mut" style="font-size:11.5px;margin-top:4px">Create/Log/Dispose all move this work to <b>Logged</b> — it leaves the Stream. Add to an existing event from the Logged tab.</div>
+    <div class="mut" id="bmsg" style="font-size:12px;margin-top:6px"></div>${built}`;
+}
+function renderBuild(){ const p=document.getElementById('buildpane'); if(p)p.innerHTML=buildHtml(); }
+function dragStart(ev,ids){ ev.dataTransfer.setData('text/plain',ids); ev.dataTransfer.effectAllowed='copy'; }
+function dropItems(ev){
+  ev.preventDefault(); const dz=document.getElementById('dropzone'); if(dz)dz.classList.remove('over');
+  (ev.dataTransfer.getData('text/plain')||'').split(',').filter(Boolean).forEach(id=>{if(!buildIds.includes(id))buildIds.push(id);});
+  builtDraftId=null; renderBuild();
+}
+function unbuild(id){ buildIds=buildIds.filter(x=>x!==id); renderBuild(); }
+async function composeBuild(){
+  if(!buildIds.length)return;
+  const kind=document.getElementById('compkind').value, ticket=document.getElementById('compticket').value;
+  const r=await api('/api/stream/compose',{method:'POST',body:JSON.stringify({ids:buildIds,kind,ticket})});
+  const msg=document.getElementById('bmsg');
+  if(!r.ok){if(msg)msg.textContent=r.error||'failed';return;}
+  buildIds=[]; builtDraftId=r.draft_id; renderBuild();
+}
+async function saveLocalBuild(){
+  if(!buildIds.length)return;
+  const ticket=(document.getElementById('compticket')||{}).value||'';
+  const r=await api('/api/logbook/log',{method:'POST',body:JSON.stringify({ids:buildIds,ticket})});
+  const msg=document.getElementById('bmsg');
+  if(!r.ok){if(msg)msg.textContent=r.error||'failed';return;}
+  buildIds=[]; builtDraftId=null; await refresh(); load();
+}
+async function disposeBuild(){
+  if(!buildIds.length)return;
+  const r=await api('/api/logbook/dispose',{method:'POST',body:JSON.stringify({ids:buildIds})});
+  if(r.ok){ buildIds=[]; builtDraftId=null; await refresh(); load(); }
+}
+// ---- Logged screen: handled bundles, grouped by day, broken out by day ----
+const LKIND={worklog:'Worklog',handoff:'Handoff',logged:'Logged time',disposed:'Disposed',sent:'Sent'};
+function renderLogged(m){ loggedExpanded=loggedExpanded||new Set(); _renderLogged(m); }
+let loggedExpanded=new Set();
+async function _renderLogged(m){
+  const d=await api('/api/logbook');
+  const totals=d.totals||[], entries=d.entries||[];
+  const grand=totals.reduce((a,b)=>a+(b.secs||0),0);
+  const sel=buildIds.length;
+  let h=`<div class="card"><div class="row"><b>Logged</b>
+    <span class="mut">handled work — combined, logged, sent or disposed</span>
+    <span style="flex:1"></span>${entries.length?`<button class="btn" onclick="copyWeek()">⧉ copy week</button>`:''}${grand?` <b>${fmtDur(grand)}</b> tracked`:''}</div>
+    <div class="mut" id="lgmsg" style="font-size:12px;margin-top:4px"></div>
+    <div id="tsbox" style="display:none;margin-top:8px"></div>`;
+  if(totals.length)
+    h+='<div class="wltotals">'+totals.map(t=>`<div class="wlbar"><span class="wlproj mono">${esc(prettyCwd(t.project))}</span><span class="wlsecs"><b>${fmtDur(t.secs)}</b></span></div>`).join('')+'</div>';
+  h+='</div>';
+  if(!entries.length){
+    h+='<div class="empty">Nothing logged yet. On the Stream, select work and Combine / Log / Dispose it.</div>';
+    m.innerHTML=h; return;
+  }
+  if(sel) h+=`<div class="selbar">${sel} work item${sel>1?'s':''} selected on the Stream — pick “＋ add” on an event below to append ${sel>1?'them':'it'}.</div>`;
+  // Group entries by their updated day (newest first; entries already sorted).
+  let lastDay='';
+  entries.forEach(e=>{
+    const dl=dayLabel(e.updated_ts);
+    if(dl!==lastDay){ h+=`<div class="sday">${dl}</div>`; lastDay=dl; }
+    h+=loggedEntry(e,sel);
+  });
+  m.innerHTML=h;
+}
+function loggedEntry(e,sel){
+  const open=loggedExpanded.has(e.id);
+  const kind=LKIND[e.kind]||e.kind;
+  const statusChip = e.kind==='disposed'?'<span class="schip">dismissed</span>'
+    : e.pushed_jira?'<span class="schip published">in Jira</span>'
+    : (e.draft_status==='published'?'<span class="schip published">sent</span>'
+    : (e.draft_id?'<span class="schip draft">draft ready</span>':'<span class="schip tag">local</span>'));
+  const time=(e.kind==='worklog'||e.kind==='logged')&&e.secs?`<span class="wldur"><b>${fmtDur(e.secs)}</b></span>`:'';
+  const multiDay=(e.breakdown||[]).length>1;
+  let detail='';
+  if(open){
+    const rows=(e.breakdown||[]).map(b=>`<div class="bdrow"><span class="mut">${dayLabel(b.ts)}</span><span class="bdsecs">${fmtDur(b.secs)}</span><span class="mut">${b.count} item${b.count>1?'s':''}</span></div>`).join('');
+    detail=`<div class="fdetail">${rows||'<span class="mut">no work attached</span>'}</div>`;
+  }
+  const canSend = e.draft_id && (e.draft_status==='draft'||e.draft_status==='approved');
+  let actions='';
+  if(sel) actions+=`<button class="btn go" onclick="addToEvent(${e.id})">＋ add ${sel}</button>`;
+  if(canSend) actions+=`<button class="btn go" onclick="sendDraft(${e.draft_id})">Send ↗</button>`;
+  if(e.kind==='logged'&&!e.pushed_jira){
+    actions+=`<input class="tagin" id="pt-${e.id}" value="${esc(e.ticket||'')}" placeholder="ticket #" style="width:76px">`;
+    actions+=`<button class="btn go" onclick="pushEntry(${e.id})" title="post this local time as a real Jira worklog">Push to Jira ↗</button>`;
+  }
+  if(e.draft_id) actions+=`<button class="btn" onclick="cur='Drafts';load()">Open</button>`;
+  actions+=`<button class="btn" onclick="restoreEntry(${e.id})" title="return this work to the Stream">${e.kind==='disposed'?'Un-dispose':'Un-log'}</button>`;
+  return `<div class="lgrow">
+    <span class="fexp" onclick="toggleLogged(${e.id})">${open?'▾':'▸'}</span>
+    <span class="fmain">
+      <span class="lghead">${esc(kind)}</span>
+      ${e.ticket?`<span class="schip tkt">${esc(e.ticket)}</span>`:''}
+      ${e.tag?`<span class="schip tag">${esc(e.tag)}</span>`:''}
+      <span class="lgtitle mut">${esc(prettyCwd(e.project)||e.title)}</span>
+      <span class="schip">${e.count} item${e.count>1?'s':''}</span>${multiDay?`<span class="schip">${(e.breakdown||[]).length} days</span>`:''}
+      ${statusChip}
+      ${detail}
+    </span>
+    ${time}
+    <span class="fact">${actions}</span></div>`;
+}
+function toggleLogged(id){ if(loggedExpanded.has(id))loggedExpanded.delete(id); else loggedExpanded.add(id); load(); }
+async function addToEvent(id){
+  if(!buildIds.length)return;
+  const r=await api('/api/logbook/append',{method:'POST',body:JSON.stringify({entry_id:id,ids:buildIds})});
+  if(r.ok){ buildIds=[]; builtDraftId=null; await refresh(); load(); }
+}
+async function restoreEntry(id){
+  await api('/api/logbook/restore',{method:'POST',body:JSON.stringify({entry_id:id})});
+  await refresh(); load();
+}
+async function pushEntry(id){
+  const el=document.getElementById('pt-'+id); const ticket=el?el.value.trim():'';
+  const msg=document.getElementById('lgmsg');
+  if(msg)msg.textContent='Pushing to Jira…';
+  const r=await api('/api/logbook/push',{method:'POST',body:JSON.stringify({entry_id:id,ticket})});
+  if(!r.ok){ if(msg)msg.textContent='Push failed: '+(r.error||'error'); return; }
+  if(msg)msg.textContent='✓ Pushed to Jira worklog on '+(r.ref||ticket)+'.';
+  await refresh(); load();
+}
+async function copyWeek(){
+  const msg=document.getElementById('lgmsg');
+  const r=await api('/api/logbook/timesheet?days=7');
+  const box=document.getElementById('tsbox');
+  if(box){ box.style.display='block';
+    box.innerHTML=`<textarea id="tsarea" style="width:100%;height:190px;font-family:ui-monospace,Menlo,monospace;font-size:12px">${esc(r.md||'')}</textarea>`; }
+  try{ await navigator.clipboard.writeText(r.md||''); if(msg)msg.textContent='✓ Weekly timesheet copied to clipboard.'; }
+  catch(e){ if(msg)msg.textContent='Timesheet ready below — select and copy.'; }
+}
+async function sendDraft(id,fromBuild){
+  await api('/api/drafts/'+id+'/publish',{method:'POST'});
+  if(fromBuild)builtDraftId=null;
+  await refresh(); load();
+}
+async function discardDraft(id){ await api('/api/drafts/'+id+'/discard',{method:'POST'}); await refresh(); load(); }
+function toggleExpand(k){ if(!k)return; if(expanded.has(k))expanded.delete(k); else expanded.add(k); load(); }
+async function saveTag(k,cwd){
+  const el=document.getElementById('tagin-'+k); const tag=el?el.value.trim():'';
+  if(!tag||!cwd)return;
+  await api('/api/rules',{method:'POST',body:JSON.stringify({prefix:cwd,tag})});
+  await refresh(); load();
+}
+// ---- Terminal: live interactive PTY sessions (xterm.js) ----
+let ptyTabs=[], ptyActive=0, ptySeq=0;
+function mkPty(){ptySeq++; return {name:'Term '+ptySeq,id:null,el:null,term:null,fit:null,off:0,timer:null,opened:false};}
+function ensurePty(){ if(!ptyTabs.length){ptyTabs=[mkPty()];ptyActive=0;} }
+function addPty(){ ptyTabs.push(mkPty()); ptyActive=ptyTabs.length-1; load(); }
+function switchPty(i){ ptyActive=i; load(); }
+function closePty(i){
+  const t=ptyTabs[i];
+  if(t.timer)clearInterval(t.timer);
+  if(t.id)api('/api/pty/close',{method:'POST',body:JSON.stringify({id:t.id})});
+  if(t.term)try{t.term.dispose();}catch(e){}
+  ptyTabs.splice(i,1);
+  if(ptyActive>=ptyTabs.length)ptyActive=Math.max(0,ptyTabs.length-1);
+  load();
+}
+function renderTerminal(m){
+  ensurePty();
+  const tabs=ptyTabs.map((x,i)=>`<button class="tterm${i===ptyActive?' on':''}" onclick="switchPty(${i})">${esc(x.name)}<span class="x" onclick="event.stopPropagation();closePty(${i})">×</span></button>`).join('');
+  m.innerHTML=`<div class="card">
+    <div class="row"><b>Terminal</b><span class="mut">a live shell on this machine — run <span class="mono">claude</span>, ssh, git, anything. Commands are captured as episodes.</span></div>
+    <div class="tterms">${tabs}<button class="tterm add" onclick="addPty()">+ tab</button></div>
+    <div id="ptymount"></div>
+  </div>`;
+  if(!window.Terminal){document.getElementById('ptymount').innerHTML='<div class="mut" style="padding:20px">terminal engine failed to load</div>';return;}
+  const t=ptyTabs[ptyActive], mount=document.getElementById('ptymount');
+  if(!t.el){t.el=document.createElement('div');t.el.className='xtermhost';}
+  mount.appendChild(t.el);
+  if(!t.term){
+    t.term=new Terminal({fontSize:13,cursorBlink:true,scrollback:8000,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',theme:{background:'#0b0e14',foreground:'#d6dbe6'}});
+    t.fit=new FitAddon.FitAddon(); t.term.loadAddon(t.fit); t.term.open(t.el);
+    t.term.onData(d=>{ if(t.id)api('/api/pty/write',{method:'POST',body:JSON.stringify({id:t.id,data:d})}); });
+  }
+  try{t.fit.fit();}catch(e){}
+  if(!t.opened)openPty(t); else { ptyResize(t); setTimeout(()=>t.term.focus(),0); }
+}
+async function openPty(t){
+  t.opened=true;
+  const r=await api('/api/pty/open',{method:'POST',body:JSON.stringify({cols:t.term.cols,rows:t.term.rows,cwd:''})});
+  if(!r.ok){t.term.write('\r\n[failed to open shell: '+(r.error||'')+']\r\n');return;}
+  t.id=r.id; t.off=0; t.timer=setInterval(()=>pollPty(t),120);
+  setTimeout(()=>t.term.focus(),0);
+}
+async function pollPty(t){
+  if(!t.id)return;
+  const r=await api('/api/pty/read',{method:'POST',body:JSON.stringify({id:t.id,from:t.off})});
+  if(r.data){const bytes=Uint8Array.from(atob(r.data),c=>c.charCodeAt(0));t.term.write(bytes);t.off=r.next;}
+  if(r.alive===false){clearInterval(t.timer);t.timer=null;t.term.write('\r\n[session ended]\r\n');}
+}
+function ptyResize(t){ if(t.id&&t.term)api('/api/pty/resize',{method:'POST',body:JSON.stringify({id:t.id,cols:t.term.cols,rows:t.term.rows})}); }
+window.addEventListener('resize',()=>{ if(cur==='Terminal'){const t=ptyTabs[ptyActive];if(t&&t.fit){try{t.fit.fit();}catch(e){}ptyResize(t);}} });
+
+// ---- Ansible tab ----
+async function renderAnsible(m){
+  m.innerHTML=`<div class="card">
+    <div class="row"><b>Ansible</b><span class="mut">ansible-playbook</span></div>
+    <label>Playbook</label><input type="text" id="apb" class="mono" placeholder="site.yml" style="width:340px">
+    <label>Inventory (-i)</label><input type="text" id="ainv" class="mono" placeholder="inventory.ini" style="width:340px">
+    <label>Extra vars (-e)</label><input type="text" id="aev" class="mono" placeholder="key=value key2=value2" style="width:340px">
+    <label>Working directory</label><input type="text" id="acwd" class="mono" placeholder="$HOME" style="width:340px">
+    <label style="display:flex;gap:6px;align-items:center;margin-top:12px"><input type="checkbox" id="achk" style="width:auto" checked> <span>--check (dry run first)</span></label>
+    <div class="actions"><button class="btn go" onclick="runAnsible()">Run playbook</button></div>
+    <pre id="aout" class="term" style="height:46vh;min-height:300px;border-radius:7px">(output appears here)</pre>
+  </div>`;
+}
+function runAnsible(){
+  const g=id=>document.getElementById(id);
+  const pb=g('apb').value.trim(), out=g('aout');
+  if(!pb){out.textContent='playbook required';return;}
+  let cmd='ansible-playbook';
+  if(g('ainv').value.trim())cmd+=' -i '+g('ainv').value.trim();
+  cmd+=' '+pb;
+  if(g('aev').value.trim())cmd+=' -e "'+g('aev').value.trim()+'"';
+  if(g('achk').checked)cmd+=' --check';
+  out.textContent='$ '+cmd+'\nrunning…';
+  api('/api/run',{method:'POST',body:JSON.stringify({cmd,cwd:g('acwd').value})}).then(r=>{
+    if(!r.ok){out.textContent='error: '+(r.error||'failed');return;}
+    pollAnsible(r.id,out,cmd);
+  });
+}
+async function pollAnsible(id,out,cmd){
+  const r=await api('/api/run/'+id);
+  out.textContent='$ '+cmd+'\n'+(r.output||'running…')+(r.done?('\n[exit '+r.exit+']'):'');
+  out.scrollTop=out.scrollHeight;
+  if(!r.done)setTimeout(()=>pollAnsible(id,out,cmd),700);
+}
+async function renderScratchpad(m){
+  const d=await api('/api/scratchpad');
+  m.innerHTML=`<div class="card"><div class="row"><b>Scratchpad</b><span class="mut">private notes, saved locally to ~/.scribe/scratchpad.md</span></div>
+    <textarea id="spad" style="min-height:440px" onblur="saveScratch()">${esc(d.text||'')}</textarea>
+    <div class="actions"><button class="btn go" onclick="saveScratch()">Save</button><span class="mut" id="spadmsg" style="align-self:center"></span></div></div>`;
+}
+async function saveScratch(){
+  const el=document.getElementById('spad'); if(!el)return;
+  await api('/api/scratchpad',{method:'POST',body:JSON.stringify({text:el.value})});
+  const msg=document.getElementById('spadmsg'); if(msg){msg.textContent='saved';setTimeout(()=>{if(msg)msg.textContent='';},1500);}
+}
+async function renderPrompts(m){
+  const d=await api('/api/prompts');
+  const ss=d.sessions||[];
+  if(!ss.length){m.innerHTML='<div class="empty">No AI prompts captured yet. Record one with <span class="mono">ai "your prompt"</span> (or <span class="mono">scribe ai …</span>) in a terminal where capture is sourced.</div>';return;}
+  let h='';
+  ss.forEach(s=>{
+    h+=`<div class="card"><div class="row">
+      <span class="tag">session</span><span class="key">${esc(s.session)}</span>
+      <span class="mut">${s.count} prompt(s) · last ${fmt(s.last)}</span></div>`;
+    s.entries.slice().reverse().forEach(e=>{
+      h+=`<div class="ev" style="grid-template-columns:120px 150px 1fr">
+        <span class="mut">${fmt(e.ts)}</span>
+        <span>${esc(e.tool)}${e.model?' · '+esc(e.model):''}${e.ticket?' · <span class="key">'+esc(e.ticket)+'</span>':''}</span>
+        <span class="mono">${esc(e.prompt)}</span></div>`;
+    });
+    h+='</div>';
+  });
+  m.innerHTML=h;
+}
+async function renderSettings(m){
+  const c=state.config||{};
+  m.innerHTML=`<div class="card">
+    <div class="row"><b>Trust guarantees (enforced structurally)</b></div>
+    <ul class="mut" style="line-height:1.8">
+      <li>Raw capture is local-only &amp; auto-expires after <b>${c.retention_days}d</b>.</li>
+      <li>No manager-facing per-engineer feed. Shared surface = normal Jira/Confluence.</li>
+      <li>Review-before-send: every artifact above is approved here first.</li>
+      <li>Mock publish posts <b>as the engineer</b> (per-user OAuth, no admin token).</li>
+      <li>Metrics would be aggregate-only (sprint/team), no per-engineer drilldown.</li>
+    </ul></div>
+    <div class="card"><b>Config</b>
+      <label>Episode gap (seconds)</label><input type="number" id="gap" value="${c.episode_gap_seconds}">
+      <label>Retention (days)</label><input type="number" id="ret" value="${c.retention_days}">
+      <label>Ticket key pattern</label><input type="text" id="pat" value="${esc(c.ticket_key_pattern)}">
+      <label>LLM backend (stub · anthropic · openai)</label><input type="text" id="llm" value="${esc(c.llm_backend)}">
+      <label>LLM model (haiku=cheap · sonnet=balanced · opus=best)</label><input type="text" id="llmmodel" value="${esc(c.llm_model||'')}">
+      <label>LLM base URL (openai backend only)</label><input type="text" id="llmbase" value="${esc(c.llm_base_url||'')}">
+      <div class="actions"><button class="btn go" onclick="saveCfg()">Save</button></div>
+      <p class="mut" style="font-size:12px">anthropic → set <b>ANTHROPIC_API_KEY</b>; openai → optional <b>OPENAI_API_KEY</b> + base URL. Non-stub backends fall back to the offline stub on any error.</p>
+    </div>
+    <div class="card"><div class="row"><b>Publishing</b>
+      <span class="status ${state.atlassian_authed?'published':'draft'}">${state.atlassian_authed?'Atlassian: authorized':'Atlassian: not authorized'}</span></div>
+      <label>Backend (mock · atlassian)</label><input type="text" id="pub" value="${esc(c.publish_backend||'mock')}">
+      <label>Atlassian OAuth client id</label><input type="text" id="acid" value="${esc(c.atlassian_client_id||'')}" style="width:340px">
+      <label>…or Atlassian conf file (skip OAuth)</label><input type="text" id="aconf" value="${esc(c.atlassian_conf_file||'')}" placeholder="~/.atlassian.conf" style="width:340px">
+      <label>Jira project key (for new issues)</label><input type="text" id="jpk" value="${esc(c.jira_project_key||'')}">
+      <label>Jira issue type</label><input type="text" id="jit" value="${esc(c.jira_issue_type||'Task')}">
+      <label>Confluence space id (for handoffs)</label><input type="text" id="csid" value="${esc(c.confluence_space_id||'')}">
+      <div class="actions"><button class="btn go" onclick="saveCfg()">Save</button></div>
+      <p class="mut" style="font-size:12px">Two ways to authenticate: <b>(a)</b> OAuth — register a 3LO app with callback <code>http://127.0.0.1:${c.atlassian_redirect_port||8799}/callback</code>, set the client id, export <b>ATLASSIAN_CLIENT_SECRET</b>, run <code>scribe auth</code>; or <b>(b)</b> a conf file above (JSON or key=value with <code>site</code> + <code>email</code> + <code>token</code> for an API token, or <code>bearer</code>). mock writes to published/*.json offline.</p>
+    </div>
+    <div class="card"><div class="row"><b>Inbound (stream)</b>
+      <span class="status ${state.inbox&&state.inbox.gitlab?'published':'draft'}">GitLab ${state.inbox&&state.inbox.gitlab?'connected':'off'}</span>
+      <span class="status ${state.inbox&&state.inbox.jira?'published':'draft'}">Jira ${state.inbox&&state.inbox.jira?'connected':'off'}</span></div>
+      <label>GitLab base URL</label><input type="text" id="glurl" value="${esc(c.gitlab_base_url||'')}" placeholder="https://gitlab.yourco.com" style="width:320px">
+      <label>Jira JQL (what flows to you)</label><input type="text" id="jjql" value="${esc(c.jira_jql||'')}" style="width:520px">
+      <label>Auto-refresh inbox every (seconds, 0 = off)</label><input type="number" id="inbsec" value="${c.inbox_refresh_seconds!=null?c.inbox_refresh_seconds:300}" style="width:120px">
+      <div class="actions"><button class="btn go" onclick="saveCfg()">Save</button></div>
+      <p class="mut" style="font-size:12px">GitLab MRs (assigned + to-review) need the base URL here and <b>GITLAB_TOKEN</b> in the env. Assigned Jira issues use the Atlassian auth above. With auto-refresh on, a background thread pulls in new items on its own; you can still hit <b>↻ refresh inbox</b> on the Stream (or <code>scribe pull</code>) any time.</p>
+    </div>
+    <div class="card"><div class="row"><b style="color:var(--bad)">Reset</b></div>
+      <p class="mut" style="font-size:12.5px">Wipe captured activity, episodes, drafts, and AI prompts for a clean slate. Published artifacts are kept unless you check the box. Cannot be undone.</p>
+      <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="rstall" style="width:auto"> also remove published artifacts</label>
+      <div class="actions"><button class="btn bad" onclick="doReset()">Reset all data</button></div>
+    </div>`;
+}
+async function doReset(){
+  if(!confirm('Wipe all captured activity, episodes, drafts and prompts? This cannot be undone.'))return;
+  const all=document.getElementById('rstall').checked;
+  const r=await api('/api/reset',{method:'POST',body:JSON.stringify({all})});
+  alert('Reset — removed '+r.events+' events, '+r.episodes+' episodes, '+r.drafts+' drafts, '+r.prompts+' prompt sessions.');
+  await refresh();load();
+}
+async function saveCfg(){
+  await api('/api/config',{method:'POST',body:JSON.stringify({
+    episode_gap_seconds:+document.getElementById('gap').value,
+    retention_days:+document.getElementById('ret').value,
+    ticket_key_pattern:document.getElementById('pat').value,
+    llm_backend:document.getElementById('llm').value,
+    llm_model:document.getElementById('llmmodel').value,
+    llm_base_url:document.getElementById('llmbase').value,
+    publish_backend:document.getElementById('pub').value,
+    atlassian_client_id:document.getElementById('acid').value,
+    atlassian_conf_file:(document.getElementById('aconf')||{}).value,
+    jira_project_key:document.getElementById('jpk').value,
+    jira_issue_type:document.getElementById('jit').value,
+    confluence_space_id:document.getElementById('csid').value,
+    gitlab_base_url:(document.getElementById('glurl')||{}).value,
+    jira_jql:(document.getElementById('jjql')||{}).value,
+    inbox_refresh_seconds:+((document.getElementById('inbsec')||{}).value||0)})});
+  await refresh();load();
+}
+let lastSig='';
+refresh().then(()=>{lastSig=sigOf(state);load();});
+function sigOf(s){return JSON.stringify([s.counts,s.binding,s.capture_live]);}
+// Live refresh: update the bar/nav every few seconds, and reload the active
+// tab's content only when the underlying data actually changed — and never
+// while the engineer is mid-edit or has the bind picker open (busy()).
+setInterval(async()=>{
+  if(busy())return;
+  state=await api('/api/state');
+  draw();
+  const sig=sigOf(state);
+  // Don't auto-reload the interactive work surfaces (would wipe input/output),
+  // or the Stream while items are selected (would drop the selection).
+  const interactive = cur==='Terminal' || cur==='Ansible' || cur==='Scratchpad' || (cur==='Stream' && (buildIds.length>0||builtDraftId));
+  if(sig!==lastSig){lastSig=sig; if(!interactive) load();}
+},4000);
+</script></body></html>
