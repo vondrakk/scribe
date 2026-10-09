@@ -29,6 +29,9 @@ pub struct StreamItem {
     pub draft_id: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cwd: Option<String>,
+    /// Git repo name for work items — the unit the Stream groups "projects" by.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repo: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub branch: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -77,6 +80,7 @@ pub fn build() -> Vec<StreamItem> {
             url: None,
             draft_id: None,
             cwd: e.cwd.clone(),
+            repo: e.repo.clone(),
             branch: e.branch.clone(),
             commands: e.commands.clone(),
             commits: e.commits.clone(),

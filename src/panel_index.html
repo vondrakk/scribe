@@ -591,15 +591,17 @@ function feedByTag(items){
   if(untagged.length) feed+=`<div class="sday">Untagged</div>`+renderItems(untagged);
   return feed;
 }
-// A work item's "project" = its first rule tag (null when untagged).
-function projKey(it){ const t=it.tags||[]; return t.length? t[0] : null; }
+// A work item's "project" = its git repo, falling back to the last segment of
+// its working directory, so projects populate automatically with no tag rules.
+function cwdBase(p){ if(!p)return null; const parts=p.replace(/\/+$/,'').split('/').filter(Boolean); return parts.length?parts[parts.length-1]:null; }
+function projKey(it){ return it.repo || cwdBase(it.cwd) || null; }
 // Day → Project nesting (the default). Days are newest-first (the input is
 // already sorted). Within a day, items are bucketed into project groups (by
-// first rule tag), plus an "Updates & drafts" bucket for non-work items and an
-// "Untagged" bucket for work with no tag. Groups FLOAT BY RECENCY — the group
-// whose newest item is most recent sits first — and items inside each group
-// stay newest-first, so freshly captured work lands at the top of its group as
-// it comes in.
+// git repo, falling back to the working-directory name), plus an "Updates &
+// drafts" bucket for non-work items and an "Other" bucket for work with no
+// repo/cwd. Groups FLOAT BY RECENCY — the group whose newest item is most
+// recent sits first — and items inside each group stay newest-first, so freshly
+// captured work lands at the top of its group as it comes in.
 function feedByDayProject(list){
   let feed='', i=0;
   while(i<list.length){
@@ -614,7 +616,7 @@ function feedByDayProject(list){
     run.forEach(it=>{
       if(it.dir!=='work'){ add('__updates','Updates & drafts','updates',it); return; }
       const p=projKey(it);
-      if(p) add('tag:'+p, p, 'tag', it); else add('__untagged','Untagged','untagged',it);
+      if(p) add('proj:'+p, p, 'tag', it); else add('__untagged','Other','untagged',it);
     });
     const ordered=[...groups.values()].sort((a,b)=>b.last-a.last); // float by recency
     feed+=`<div class="sday">${dl}<button class="btn daybtn" onclick="combineDay('${dk}')">⊕ combine this day</button></div>`;
