@@ -1,6 +1,6 @@
 [package]
 name = "scribe"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "Passive per-engineer work capture -> draft Jira/Confluence artifacts (prototype)"
 
