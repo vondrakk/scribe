@@ -9,6 +9,7 @@ mod gitlab;
 mod inbox;
 mod llm;
 mod model;
+mod notify;
 mod prompts;
 mod pty;
 mod rules;
@@ -297,15 +298,22 @@ fn cmd_status() {
 fn shell_snippet(bin: &str) -> String {
     format!(
         r#"# >>> scribe capture >>>
-# Passive shell capture for Scribe (bash). Appends one JSONL line per command
-# to $SCRIBE_HOME/events.jsonl via a fast native call (no interpreter spawn).
+# Passive shell capture for Scribe. Appends one JSONL line per command to
+# $SCRIBE_HOME/events.jsonl via a fast native call (no interpreter spawn).
+# Works in both bash and zsh (macOS's default shell) — the hook self-detects.
 export SCRIBE_HOME="${{SCRIBE_HOME:-$HOME/.scribe}}"
 # A stable session id per terminal, so AI prompts are indexed by session.
 export SCRIBE_SESSION="${{SCRIBE_SESSION:-$(date +%Y%m%d-%H%M%S)-$$}}"
 _SCRIBE_BIN="{bin}"
 _scribe_log() {{
   local ec=$?
-  local last; last=$(HISTTIMEFORMAT= history 1 2>/dev/null | sed 's/^[ ]*[0-9]*[ ]*//')
+  local last
+  if [ -n "$ZSH_VERSION" ]; then
+    # zsh: the last history entry, numbering/leading-space stripped.
+    last=$(fc -ln -1 2>/dev/null | sed 's/^[[:space:]]*//')
+  else
+    last=$(HISTTIMEFORMAT= history 1 2>/dev/null | sed 's/^[ ]*[0-9]*[ ]*//')
+  fi
   [ -z "$last" ] && return $ec
   [ "$last" = "$_SCRIBE_LAST" ] && return $ec
   _SCRIBE_LAST="$last"
@@ -315,10 +323,21 @@ _scribe_log() {{
   "$_SCRIBE_BIN" capture-shell "$last" "$ec" "$PWD" "$repo" "$branch" 2>/dev/null
   return $ec
 }}
-case "$PROMPT_COMMAND" in
-  *_scribe_log*) : ;;
-  *) PROMPT_COMMAND="_scribe_log${{PROMPT_COMMAND:+;$PROMPT_COMMAND}}" ;;
-esac
+if [ -n "$ZSH_VERSION" ]; then
+  # zsh: register _scribe_log as a precmd hook (runs before each prompt).
+  autoload -Uz add-zsh-hook 2>/dev/null
+  if whence add-zsh-hook >/dev/null 2>&1; then
+    add-zsh-hook precmd _scribe_log
+  elif [ -z "${{precmd_functions[(r)_scribe_log]}}" ]; then
+    precmd_functions+=(_scribe_log)
+  fi
+else
+  # bash: prepend to PROMPT_COMMAND, once.
+  case "$PROMPT_COMMAND" in
+    *_scribe_log*) : ;;
+    *) PROMPT_COMMAND="_scribe_log${{PROMPT_COMMAND:+;$PROMPT_COMMAND}}" ;;
+  esac
+fi
 # Binding verb.
 w() {{ "$_SCRIBE_BIN" w "$@"; }}
 # Record an AI prompt in this session:  ai "how do I ..."   (or:  ai - <<<"$text")
@@ -374,10 +393,12 @@ fn cmd_init(shell: bool, git: bool) {
     let _ = std::fs::write(&snippet_path, shell_snippet(&bin));
 
     if shell {
-        println!("Shell capture (bash). Add this line to your ~/.bashrc:\n");
+        println!("Shell capture (bash or zsh). Add this line to your ~/.bashrc");
+        println!("(or ~/.zshrc on macOS / zsh):\n");
         println!("    source \"{}\"\n", snippet_path.to_string_lossy());
-        println!("Then open a new shell (or `source ~/.bashrc`). The `w` verb");
-        println!("becomes available and capture starts immediately.\n");
+        println!("Then open a new shell (or re-source the rc file). The `w` verb");
+        println!("becomes available and capture starts immediately. The snippet");
+        println!("self-detects the shell, so the same line works in both.\n");
     }
     if git {
         println!("Git hooks. In each repo you want captured, run:\n");

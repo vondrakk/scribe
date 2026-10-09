@@ -47,7 +47,8 @@ BIN=target/release/scribe
 $BIN up                                          # http://127.0.0.1:8787
 
 # 2. enable capture in the terminal you work in (one-time, prints in `up`):
-source "$SCRIBE_HOME/scribe.sh"            # adds PROMPT_COMMAND capture
+source "$SCRIBE_HOME/scribe.sh"            # bash or zsh — the snippet self-detects
+#   add the same line to ~/.bashrc (or ~/.zshrc on macOS) to make it permanent
 $BIN install-hooks /path/to/repo                 # optional: git branch/commit events
 
 # ...work normally: cd, git checkout feat/OPS-1234-x, commit, test...
@@ -195,8 +196,9 @@ After that, **Publish** in the panel posts to real Jira/Confluence. Any failure
 
 | PRD | In this prototype |
 |---|---|
-| §4 Capture (terminal-first) | bash `PROMPT_COMMAND` → `scribe capture-shell` + `post-checkout`/`commit-msg`/`post-commit` hooks → `events.jsonl`. SSH/kubectl/cloud targets parsed from command text; PagerDuty out. |
+| §4 Capture (terminal-first) | bash `PROMPT_COMMAND` **and** zsh `precmd` (macOS default) → `scribe capture-shell` + `post-checkout`/`commit-msg`/`post-commit` hooks → `events.jsonl`. SSH/kubectl/cloud targets parsed from command text; PagerDuty out. |
 | §5 Binding model | branch-key inference (silent), `w` verb, prompt segment, candidate list |
+| §5 Desktop notification | `notify.rs`: a `post-checkout` onto an **unkeyed** branch fires a local toast (Linux `notify-send`, macOS `osascript`) prompting `w <TICKET>`. Config `desktop_notifications` / env `SCRIBE_NO_NOTIFY` turn it off. |
 | §6 Seam detection | repo/branch-key change, time gap, and explicit `w !` split episodes; unbound activity → Unaccounted |
 | §8 Pipeline | `pipeline::process()`: sessionize → classify → summarize |
 | §8 LLM strategy | `llm.rs` wires the pluggable backend: deterministic `stub`, real Anthropic Claude, or OpenAI-compatible (incl. local); non-stub falls back to stub on any error |
@@ -207,6 +209,5 @@ After that, **Publish** in the panel posts to real Jira/Confluence. Any failure
 
 ## Not in this slice (next steps)
 
-- macOS/zsh capture, `notify-send` desktop seam prompts, PagerDuty, calendar
-  seams, and the aggregate team timeline (§3.3, §11 M6).
+- PagerDuty, calendar seams, and the aggregate team timeline (§3.3, §11 M6).
 - Packaging (static musl build / container).

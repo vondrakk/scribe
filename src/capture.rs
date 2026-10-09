@@ -91,11 +91,19 @@ pub fn capture_event(etype: &str, action: &str, message: Option<&str>, sha: Opti
             binding::set_binding(Some(k), "branch", &format!("branch={}", branch.unwrap_or_default()));
             eprintln!("[scribe] bound to {}", k);
         } else {
+            let br = branch.clone().unwrap_or_default();
             let cands: Vec<String> = binding::candidate_tickets(5).into_iter().map(|c| c.0).collect();
             let hint = if cands.is_empty() { "none seen yet".into() } else { cands.join(", ") };
             eprintln!(
                 "[scribe] unkeyed branch '{}'. Bind with: w <TICKET>   (recent: {})",
-                branch.unwrap_or_default(), hint
+                br, hint
+            );
+            // Hard seam: a context switch onto an unkeyed branch needs the
+            // engineer to confirm a ticket. Surface it as a desktop toast so it
+            // isn't missed while heads-down (PRD §5).
+            crate::notify::desktop(
+                &format!("Unbound branch '{}'", br),
+                &format!("Bind a ticket:  w <TICKET>   (recent: {})", hint),
             );
         }
     } else if action == "commit" {

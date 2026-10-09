@@ -66,6 +66,11 @@ pub struct Config {
     /// Background inbox auto-refresh interval (seconds). 0 disables it; the panel
     /// then only refreshes on the manual button / `scribe pull`. Default 300 (5m).
     pub inbox_refresh_seconds: i64,
+    /// Fire a local desktop notification on a hard seam the engineer would miss
+    /// while heads-down — e.g. a branch switch onto an unkeyed branch that needs
+    /// binding (PRD §5). Linux uses `notify-send`, macOS uses `osascript`. The
+    /// `SCRIBE_NO_NOTIFY` env var overrides this to off. Default true.
+    pub desktop_notifications: bool,
 }
 
 impl Default for Config {
@@ -95,6 +100,7 @@ impl Default for Config {
             jira_jql: "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC"
                 .to_string(),
             inbox_refresh_seconds: 300,
+            desktop_notifications: true,
         }
     }
 }
