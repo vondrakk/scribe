@@ -2,7 +2,8 @@
 //!
 //! Unhandled work is grouped into one card per ticket per day (or per project
 //! for work with no ticket), joined with the conversation context that explains
-//! it (src/context.rs), and given a ready-to-post Jira update. The engineer
+//! it (src/context.rs) and the AI prompts sent while doing it (src/prompts.rs),
+//! and given a ready-to-post Jira update. The engineer
 //! sends it, edits it, or skips it — nothing else is asked of them. Nothing
 //! here publishes without that explicit send (§7.3).
 
@@ -12,7 +13,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::context::{self, ContextItem};
 use crate::model::{self, now_ts, Draft, Episode};
+use crate::prompts::{self, Prompt};
 use crate::{config, logbook, publish, stream};
+
+/// Prompts are stamped a moment apart from their timeline marker.
+const PROMPT_SLACK: f64 = 2.0;
+/// How many prompts the proposed update quotes before summarising the rest.
+const PROMPTS_QUOTED: usize = 6;
 
 /// A notification this long before work starts may be what triggered it.
 const LEAD_SECS: f64 = 600.0;
@@ -32,6 +39,13 @@ pub struct CtxView {
     pub included: bool,
 }
 
+#[derive(Serialize, Default, Clone)]
+pub struct PromptView {
+    pub ts: f64,
+    pub tool: String,
+    pub text: String,
+}
+
 #[derive(Serialize, Default)]
 pub struct Card {
     pub id: String,
@@ -49,6 +63,8 @@ pub struct Card {
     pub commits: Vec<String>,
     pub commands: Vec<String>,
     pub note: String,
+    /// What was asked of AI tools during this work, oldest first.
+    pub prompts: Vec<PromptView>,
     pub context: Vec<CtxView>,
     /// The proposed Jira update, in the wiki-ish markup publish understands.
     pub body: String,
@@ -136,6 +152,10 @@ fn ctx_view(it: &ContextItem) -> CtxView {
     }
 }
 
+fn in_episode(p: &Prompt, e: &Episode) -> bool {
+    p.ts >= e.start_ts - PROMPT_SLACK && p.ts <= e.end_ts + PROMPT_SLACK
+}
+
 fn compose_body(card: &Card, eps: &[&Episode], llm: bool) -> String {
     let mut lines: Vec<String> = Vec::new();
     let why: Vec<&CtxView> = card.context.iter().filter(|c| c.included).collect();
@@ -147,7 +167,22 @@ fn compose_body(card: &Card, eps: &[&Episode], llm: bool) -> String {
         lines.extend(why.iter().map(|c| c.line.clone()));
         lines.push(String::new());
     }
-    if !eps.is_empty() {
+    if !card.prompts.is_empty() {
+        let mut tools: Vec<&str> = Vec::new();
+        for p in &card.prompts {
+            if !tools.contains(&p.tool.as_str()) {
+                tools.push(&p.tool);
+            }
+        }
+        lines.push(format!("h3. Asked of {}", tools.join(", ")));
+        lines.extend(card.prompts.iter().take(PROMPTS_QUOTED).map(|p| format!("* {}", one_line(&p.text, 200))));
+        if card.prompts.len() > PROMPTS_QUOTED {
+            lines.push(format!("* …and {} more prompt(s)", card.prompts.len() - PROMPTS_QUOTED));
+        }
+        lines.push(String::new());
+    }
+    let did_something = !card.commits.is_empty() || eps.iter().any(|e| !e.commands.is_empty());
+    if did_something {
         lines.push("h3. What was done".into());
         if llm {
             // A real model wrote the summaries: they read better than counts.
@@ -174,14 +209,20 @@ pub fn build() -> Vec<Card> {
     let episodes = model::load_episodes();
     let handled = logbook::handled_ids();
     let now = now_ts();
+    let mut asked: Vec<Prompt> = prompts::all_sessions().into_iter().flat_map(|s| s.entries).collect();
+    asked.sort_by(|a, b| a.ts.total_cmp(&b.ts));
 
     // Group unhandled work: per ticket per day, else per project per day; an
     // unticketed interrupt is its own thing.
     let mut groups: BTreeMap<String, Vec<&Episode>> = BTreeMap::new();
     for e in episodes.iter().filter(|e| !handled.contains(&e.id)) {
         // Nothing was done in it (e.g. only the capture snippet being sourced):
-        // not worth a decision.
-        if e.commands.is_empty() && e.commits.is_empty() && e.note.is_none() {
+        // not worth a decision. Prompting an AI tool counts as doing something.
+        if e.commands.is_empty()
+            && e.commits.is_empty()
+            && e.note.is_none()
+            && !asked.iter().any(|p| in_episode(p, e))
+        {
             continue;
         }
         let day = local_day(e.end_ts);
@@ -230,6 +271,11 @@ pub fn build() -> Vec<Card> {
             commits: eps.iter().flat_map(|e| e.commits.clone()).collect(),
             commands: eps.iter().flat_map(|e| e.commands.clone()).collect(),
             note,
+            prompts: asked
+                .iter()
+                .filter(|p| eps.iter().any(|e| in_episode(p, e)))
+                .map(|p| PromptView { ts: p.ts, tool: p.tool.clone(), text: p.prompt.clone() })
+                .collect(),
             ..Default::default()
         };
         cards.push((card, eps));

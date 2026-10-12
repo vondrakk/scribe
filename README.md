@@ -146,8 +146,13 @@ also lands in the main event log, so the **Timeline** shows AI usage, episode
 **summaries count AI prompts**, and the panel's **Prompts** tab lists them
 grouped by session (tagged with tool/model and the active ticket).
 
-> Automate it: wire a Claude Code `UserPromptSubmit` hook (or a wrapper around
-> your AI CLI) to call `scribe ai` so capture is hands-free.
+Prompts also show on the **Review** screen: each card lists what was asked
+while that work was happening and quotes the first few in the proposed update,
+and a session that was only prompts (no terminal commands) gets a card of its
+own. Sending or skipping the card clears them.
+
+> Automate it for Claude Code: `./enable-capture.sh --claude` adds a
+> `UserPromptSubmit` hook that calls `scribe ai -`, so capture is hands-free.
 
 ## LLM backend (episode summaries)
 

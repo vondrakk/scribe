@@ -254,6 +254,7 @@ main.narrow{max-width:860px;margin:0 auto}
 .connrow input{width:100%}
 .connrow .connres{grid-column:1/-1;font-size:12px;margin-top:4px;min-height:4px}
 @media(max-width:720px){.connrow{grid-template-columns:1fr}}
+.rprompt{font-size:12.5px;white-space:pre-wrap;padding:6px 0;border-bottom:1px solid var(--line)}
 .rsent{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border:1px solid var(--ok-bd);background:var(--ok-bg);border-radius:10px;margin:8px 0;font-size:13px}
 .rsent code{background:var(--input);padding:2px 7px;border-radius:5px;color:var(--fg);overflow-wrap:anywhere}
 .rmock{padding:8px 12px;border:1px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn);border-radius:8px;font-size:12.5px;margin-bottom:10px}
@@ -535,6 +536,7 @@ function rvCard(c,i){
   const chips=(c.kind==='interrupt'?'<span class="schip draft">interruption</span>':'')
     +(c.active?'<span class="schip" title="You may still be working on this — sending now leaves later commands out">in progress</span>':'');
   const meta=[rvWhen(c), thread?'':fmtDur(c.secs), c.ticket&&c.place?esc(c.place):''].filter(Boolean).join(' · ');
+  const np=(c.prompts||[]).length, nc=(c.commands||[]).length;
   let h=`<div class="rcard ${c.kind}"><div class="rhead">
     <span class="rtitle ${c.ticket?'key':''}">${esc(c.title)}</span><span class="rmeta">${meta}</span>${chips}</div>`;
   const offered=(c.context||[]).filter(x=>!x.included);
@@ -556,10 +558,10 @@ function rvCard(c,i){
     <button class="btn" onclick="rvToggleEdit(${i})">${editing?'Done editing':'Edit'}</button>
     <button class="btn" onclick="rvSkip(${i})" title="Not worth recording — moves to History, where you can bring it back">Skip</button>
     <span style="flex:1"></span>
-    ${(c.commands||[]).length?`<span class="rlink" onclick="rvToggleOpen(${i})">${open?'hide':'show'} ${c.commands.length} command${c.commands.length>1?'s':''}</span>`:''}</div>`;
+    ${np+nc?`<span class="rlink" onclick="rvToggleOpen(${i})">${open?'hide':'show'} ${[np?np+' prompt'+(np>1?'s':''):'',nc?nc+' command'+(nc>1?'s':''):''].filter(Boolean).join(' · ')}</span>`:''}</div>`;
   if(!c.ticket&&!thread)h+=`<div class="rhint">No ticket was set for this work. Send creates a new Jira ticket — or enter an existing one to log it there.</div>`;
   if(rvErr[c.id])h+=`<div class="rerr">${esc(rvErr[c.id])}</div>`;
-  if(open)h+=`<div class="fdetail">${c.commands.map(x=>`<div class="cmd">${esc(x)}</div>`).join('')}</div>`;
+  if(open)h+=`<div class="fdetail">${(c.prompts||[]).map(x=>`<div class="rprompt"><span class="mut">${esc(x.tool)} · ${relTime(x.ts)}</span><br>${esc(x.text)}</div>`).join('')}${(c.commands||[]).map(x=>`<div class="cmd">${esc(x)}</div>`).join('')}</div>`;
   return h+'</div>';
 }
 function rvToggleEdit(i){ const c=rvList[i]; if(rvEdit.has(c.id))rvEdit.delete(c.id); else rvEdit.add(c.id); load(); }
