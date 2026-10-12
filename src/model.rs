@@ -69,6 +69,9 @@ pub struct Episode {
     /// Commit messages made during this episode.
     #[serde(default)]
     pub commits: Vec<String>,
+    /// What the engineer said interrupted them (`w ! <reason>`), if anything.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub note: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -206,6 +209,7 @@ pub fn reset(include_published: bool) -> (usize, usize, usize, usize) {
         config::drafts_file(),
         config::state_file(),
         config::binding_file(),
+        config::home().join("context.json"),
     ] {
         let _ = std::fs::remove_file(f);
     }

@@ -4,6 +4,7 @@ mod binding;
 mod capture;
 mod atlassian;
 mod config;
+mod context;
 mod drafts;
 mod gitlab;
 mod inbox;
@@ -20,6 +21,7 @@ mod workbench;
 mod panel;
 mod pipeline;
 mod publish;
+mod review;
 
 use clap::{Parser, Subcommand};
 
@@ -62,8 +64,13 @@ enum Cmd {
         #[arg(long)]
         sha: Option<String>,
     },
-    /// Binding verb: `w` show · `w OPS-1234` bind · `w ?` candidates · `w !` interrupt.
-    W { arg: Option<String> },
+    /// Binding verb: `w` show · `w OPS-1234` bind · `w ?` candidates ·
+    /// `w ! [what was asked, by whom]` interrupt.
+    W {
+        arg: Option<String>,
+        /// Free-text reason for an interrupt (`w ! maria asked about db-prod`).
+        rest: Vec<String>,
+    },
     /// Emit the prompt-line segment (bound ticket / unbound glyph).
     Prompt,
     /// Record an AI prompt to the per-session prompt log. Prompt text is a
@@ -79,6 +86,18 @@ enum Cmd {
         #[arg(long)]
         session: Option<String>,
     },
+    /// Add a chat thread as context for your current work. Reads the clipboard
+    /// when no text is given; "-" reads stdin.
+    Clip {
+        text: Option<String>,
+        /// Ticket this thread belongs to (default: a key found in the text,
+        /// else whatever you were working on at the time).
+        #[arg(long)]
+        ticket: Option<String>,
+    },
+    /// Record chat notifications your desktop shows, as local context (Linux).
+    /// The panel does this itself when the setting is on; this runs it alone.
+    Listen,
     /// Sessionize → classify → summarize → emit drafts.
     Process,
     /// Apply retention (drop raw capture older than N days).
@@ -120,7 +139,21 @@ fn main() {
         Cmd::Event { etype, action, message, sha } => {
             capture::capture_event(&etype, &action, message.as_deref(), sha.as_deref())
         }
-        Cmd::W { arg } => cmd_w(arg.as_deref()),
+        Cmd::W { arg, rest } => cmd_w(arg.as_deref(), &rest.join(" ")),
+        Cmd::Clip { text, ticket } => cmd_clip(text, ticket),
+        Cmd::Listen => {
+            let mut cfg = config::load();
+            if !cfg.capture_notifications {
+                cfg.capture_notifications = true;
+                config::save(&cfg);
+                println!("turned on capture_notifications in config");
+            }
+            println!("listening for notifications from: {}  (Ctrl-C to stop)", cfg.notification_apps);
+            if let Err(e) = context::listen() {
+                eprintln!("listen failed: {e}");
+                std::process::exit(1);
+            }
+        }
         Cmd::Prompt => cmd_prompt(),
         Cmd::Ai { prompt, tool, model, session } => cmd_ai(prompt, tool, model, session),
         Cmd::Process => {
@@ -157,7 +190,35 @@ fn main() {
     }
 }
 
-fn cmd_w(arg: Option<&str>) {
+fn cmd_clip(text: Option<String>, ticket: Option<String>) {
+    let raw = match text {
+        Some(t) if t != "-" => Ok(t),
+        Some(_) => {
+            use std::io::Read;
+            let mut s = String::new();
+            let _ = std::io::stdin().read_to_string(&mut s);
+            Ok(s)
+        }
+        None => context::read_clipboard(),
+    };
+    match raw.and_then(|t| context::add_clip(&t, ticket.as_deref().unwrap_or(""))) {
+        Ok(item) => {
+            let lines = item.text.lines().count();
+            let target = if item.ticket.is_empty() {
+                "your current work".to_string()
+            } else {
+                item.ticket.clone()
+            };
+            println!("added thread ({lines} line(s)) as context for {target} — review it in the panel");
+        }
+        Err(e) => {
+            eprintln!("clip failed: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
+fn cmd_w(arg: Option<&str>, reason: &str) {
     match arg {
         None => match binding::get_binding() {
             Some(b) => println!("bound to {} ({})", b.ticket, b.source),
@@ -174,7 +235,7 @@ fn cmd_w(arg: Option<&str>) {
             }
         }
         Some("!") => {
-            binding::mark_interrupt();
+            binding::mark_interrupt(Some(reason));
             println!("marked interrupt — current activity split into its own episode");
         }
         Some(a) => {

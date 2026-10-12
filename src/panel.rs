@@ -1,13 +1,15 @@
 //! Local control panel — multi-tab web UI (Nanny pattern) over tiny_http.
 //!
-//! Tabs: Timeline · Episodes · Drafts · Unaccounted · Settings. This is the
-//! review surface: nothing publishes without an explicit click here (§7.3).
+//! Review is the one screen that matters: a card per piece of work with a
+//! proposed update to send, edit or skip. History and Settings sit beside it;
+//! the pipeline internals and the workbench live under "More". Nothing
+//! publishes without an explicit click here (§7.3).
 //! Binds to loopback only.
 
 use serde_json::{json, Value};
 use tiny_http::{Header, Method, Response, Server};
 
-use crate::{atlassian, binding, config, inbox, logbook, model, pipeline, prompts, pty, publish, rules, stream, timeadj, workbench};
+use crate::{atlassian, binding, config, context, inbox, logbook, model, pipeline, prompts, pty, publish, review, rules, stream, timeadj, workbench};
 
 const INDEX_HTML: &str = include_str!("panel_index.html");
 const XTERM_JS: &str = include_str!("../assets/xterm.js");
@@ -38,6 +40,7 @@ fn state_json() -> Value {
         "binding": binding::get_binding(),
         "config": config::load(),
         "counts": {
+            "review": review::build().len(),
             "drafts": n_drafts,
             "episodes": episodes.len(),
             "unaccounted": n_un,
@@ -346,6 +349,12 @@ fn apply_config(v: &Value) {
     if let Some(x) = v.get("inbox_refresh_seconds").and_then(|x| x.as_i64()) {
         c.inbox_refresh_seconds = x;
     }
+    if let Some(x) = v.get("capture_notifications").and_then(|x| x.as_bool()) {
+        c.capture_notifications = x;
+    }
+    if let Some(x) = v.get("notification_apps").and_then(|x| x.as_str()) {
+        c.notification_apps = x.to_string();
+    }
     config::save(&c);
 }
 
@@ -385,6 +394,8 @@ pub fn serve() {
     };
     // Background inbox auto-refresh (off the request thread).
     spawn_inbox_refresher();
+    // Opt-in chat-notification listener (idles while the setting is off).
+    context::spawn_listener();
 
     // Process once at startup so the panel opens with current content.
     let r0 = pipeline::process();
@@ -468,6 +479,32 @@ pub fn serve() {
             }
             (Method::Get, "/api/stream") => {
                 (200, json!({ "items": stream::build() }).to_string(), false)
+            }
+            (Method::Get, "/api/review") => {
+                (200, json!({ "cards": review::build(), "handoff": review::handoff() }).to_string(), false)
+            }
+            (Method::Post, "/api/review/send") => {
+                let req: review::SendReq = serde_json::from_str(&body).unwrap_or_default();
+                match review::send(&req) {
+                    Ok(s) => (200, json!({"ok": true, "ref": s.reference, "url": s.url,
+                        "reply": s.reply, "mock": s.mock}).to_string(), false),
+                    Err(e) => (400, json!({"ok": false, "error": e}).to_string(), false),
+                }
+            }
+            (Method::Post, "/api/review/skip") => {
+                let req: review::SendReq = serde_json::from_str(&body).unwrap_or_default();
+                review::skip(&req.episode_ids, &req.context_ids);
+                (200, json!({"ok": true}).to_string(), false)
+            }
+            (Method::Post, "/api/context/clip") => {
+                // In-panel replacement for `scribe clip`.
+                let v = serde_json::from_str::<Value>(&body).unwrap_or(json!({}));
+                let text = v.get("text").and_then(|x| x.as_str()).unwrap_or("");
+                let ticket = v.get("ticket").and_then(|x| x.as_str()).unwrap_or("");
+                match context::add_clip(text, ticket) {
+                    Ok(_) => (200, json!({"ok": true}).to_string(), false),
+                    Err(e) => (400, json!({"ok": false, "error": e}).to_string(), false),
+                }
             }
             (Method::Get, "/api/rules") => {
                 (200, json!({ "rules": rules::load() }).to_string(), false)
@@ -657,8 +694,11 @@ pub fn serve() {
                 }
             }
             (Method::Post, "/api/interrupt") => {
-                // In-panel replacement for `w !`.
-                binding::mark_interrupt();
+                // In-panel replacement for `w ! [reason]`.
+                let reason = serde_json::from_str::<Value>(&body)
+                    .ok()
+                    .and_then(|v| v.get("reason").and_then(|x| x.as_str()).map(String::from));
+                binding::mark_interrupt(reason.as_deref());
                 (200, json!({"ok": true}).to_string(), false)
             }
             (Method::Post, "/api/config") => {

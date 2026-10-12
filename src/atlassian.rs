@@ -517,14 +517,34 @@ fn classify_line(line: &str) -> Line<'_> {
 fn inline_adf(text: &str) -> Vec<Value> {
     let mut nodes = Vec::new();
     let mut bold = false;
-    for seg in text.split('*') {
-        if !seg.is_empty() {
-            let mut node = json!({ "type": "text", "text": seg });
-            if bold {
-                node["marks"] = json!([{ "type": "strong" }]);
-            }
-            nodes.push(node);
+    // Bare URLs become real links (a thread permalink, a page, an MR).
+    let url = regex::Regex::new(r"https?://[^\s)\]>]+").unwrap();
+    let mut push = |s: &str, href: Option<&str>, bold: bool| {
+        if s.is_empty() {
+            return;
         }
+        let mut marks: Vec<Value> = Vec::new();
+        if let Some(h) = href {
+            marks.push(json!({ "type": "link", "attrs": { "href": h } }));
+        }
+        if bold {
+            marks.push(json!({ "type": "strong" }));
+        }
+        let mut node = json!({ "type": "text", "text": s });
+        if !marks.is_empty() {
+            node["marks"] = json!(marks);
+        }
+        nodes.push(node);
+    };
+    for seg in text.split('*') {
+        let mut last = 0;
+        for m in url.find_iter(seg) {
+            let u = m.as_str().trim_end_matches(['.', ',', ';', ':']);
+            push(&seg[last..m.start()], None, bold);
+            push(u, Some(u), bold);
+            last = m.start() + u.len();
+        }
+        push(&seg[last..], None, bold);
         bold = !bold; // each '*' toggles bold state
     }
     if nodes.is_empty() {

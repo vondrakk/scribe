@@ -104,7 +104,9 @@ pub fn sessionize(events: &[Event], gap_limit: f64) -> Vec<Vec<Event>> {
 }
 
 fn episode_ticket(events: &[Event]) -> Option<String> {
-    for ev in events {
+    // A seam's key is the ticket that was *interrupted*, not the one the
+    // interrupting work belongs to.
+    for ev in events.iter().filter(|e| e.kind != "seam") {
         if let Some(k) = &ev.key {
             return Some(k.clone());
         }
@@ -257,6 +259,11 @@ pub fn process() -> ProcessResult {
             .map(|m| m.lines().next().unwrap_or("").to_string())
             .collect();
         let cwd = most_common_cwd(&grp);
+        let note = grp
+            .iter()
+            .filter(|e| e.kind == "seam")
+            .filter_map(|e| e.msg.clone())
+            .find(|m| m != binding::DEFAULT_INTERRUPT_MSG);
         ep_id += 1;
         let ep = Episode {
             id: ep_id,
@@ -272,6 +279,7 @@ pub fn process() -> ProcessResult {
             cwd,
             commands,
             commits,
+            note,
         };
         episodes.push(ep.clone());
         built.push((ep, grp));

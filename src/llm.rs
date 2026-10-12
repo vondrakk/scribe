@@ -48,9 +48,40 @@ pub fn summarize(
 ) -> String {
     let cfg = config::load();
     match cfg.llm_backend.as_str() {
-        "anthropic" => try_backend(call_anthropic(&cfg, events, activity, ticket), fallback),
-        "openai" => try_backend(call_openai(&cfg, events, activity, ticket), fallback),
+        "anthropic" => try_backend(
+            call_anthropic(&cfg, SYSTEM_PROMPT, &build_user_prompt(events, activity, ticket)),
+            fallback,
+        ),
+        "openai" => try_backend(
+            call_openai(&cfg, SYSTEM_PROMPT, &build_user_prompt(events, activity, ticket)),
+            fallback,
+        ),
         _ => fallback.to_string(),
+    }
+}
+
+const DISTILL_PROMPT: &str = "You condense a pasted chat thread into a note for a \
+Jira ticket. In at most three short sentences state: the problem or request, \
+what was decided, and the outcome if there is one. Paraphrase — do not quote \
+messages verbatim. Use only what the thread says; never invent details. No \
+preamble, no markdown, no bullet points.";
+
+/// Distil a pasted chat thread into problem / decision / outcome. `None` on the
+/// stub backend or any failure — the caller then shows the thread itself.
+pub fn distill(thread: &str) -> Option<String> {
+    let cfg = config::load();
+    let result = match cfg.llm_backend.as_str() {
+        "anthropic" => call_anthropic(&cfg, DISTILL_PROMPT, thread),
+        "openai" => call_openai(&cfg, DISTILL_PROMPT, thread),
+        _ => return None,
+    };
+    match result {
+        Ok(s) if !s.trim().is_empty() => Some(s.trim().to_string()),
+        Ok(_) => None,
+        Err(e) => {
+            eprintln!("[scribe] could not distil thread ({e}); keeping the text as pasted");
+            None
+        }
     }
 }
 
@@ -125,22 +156,15 @@ fn build_user_prompt(events: &[Event], activity: &str, ticket: &Option<String>) 
 
 // --- Anthropic backend -----------------------------------------------------
 
-fn call_anthropic(
-    cfg: &Config,
-    events: &[Event],
-    activity: &str,
-    ticket: &Option<String>,
-) -> Result<String, String> {
+fn call_anthropic(cfg: &Config, system: &str, user: &str) -> Result<String, String> {
     let key = std::env::var("ANTHROPIC_API_KEY")
         .ok()
         .filter(|k| !k.is_empty())
         .ok_or("ANTHROPIC_API_KEY not set")?;
-    let user = build_user_prompt(events, activity, ticket);
-
     let mut body = json!({
         "model": cfg.llm_model,
         "max_tokens": cfg.llm_max_tokens,
-        "system": SYSTEM_PROMPT,
+        "system": system,
         "messages": [ { "role": "user", "content": user } ],
     });
     // `output_config.effort` keeps cost down on Opus / Sonnet 5.x / Fable, but
@@ -181,25 +205,18 @@ fn call_anthropic(
 
 // --- OpenAI-compatible backend (incl. local servers) -----------------------
 
-fn call_openai(
-    cfg: &Config,
-    events: &[Event],
-    activity: &str,
-    ticket: &Option<String>,
-) -> Result<String, String> {
+fn call_openai(cfg: &Config, system: &str, user: &str) -> Result<String, String> {
     let base = if cfg.llm_base_url.is_empty() {
         "http://localhost:11434/v1".to_string() // Ollama default
     } else {
         cfg.llm_base_url.trim_end_matches('/').to_string()
     };
     let url = format!("{base}/chat/completions");
-    let user = build_user_prompt(events, activity, ticket);
-
     let body = json!({
         "model": cfg.llm_model,
         "max_tokens": cfg.llm_max_tokens,
         "messages": [
-            { "role": "system", "content": SYSTEM_PROMPT },
+            { "role": "system", "content": system },
             { "role": "user", "content": user },
         ],
     });

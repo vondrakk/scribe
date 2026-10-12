@@ -71,6 +71,12 @@ pub struct Config {
     /// binding (PRD §5). Linux uses `notify-send`, macOS uses `osascript`. The
     /// `SCRIBE_NO_NOTIFY` env var overrides this to off. Default true.
     pub desktop_notifications: bool,
+    /// Record chat notifications the desktop already shows (sender, channel,
+    /// preview) as local context for the review screen. Linux only. Off by
+    /// default: it stores other people's message previews, so it is opt-in.
+    pub capture_notifications: bool,
+    /// Comma-separated app names whose notifications are recorded.
+    pub notification_apps: String,
 }
 
 impl Default for Config {
@@ -101,6 +107,8 @@ impl Default for Config {
                 .to_string(),
             inbox_refresh_seconds: 300,
             desktop_notifications: true,
+            capture_notifications: false,
+            notification_apps: "slack".to_string(),
         }
     }
 }

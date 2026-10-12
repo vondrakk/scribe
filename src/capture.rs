@@ -122,6 +122,7 @@ pub fn count_events() -> usize {
 pub fn sweep_retention() -> usize {
     let days = config::load().retention_days as f64;
     let cutoff = model::now_ts() - days * 86400.0;
+    crate::context::sweep(cutoff);
     let log = config::events_log();
     let mut kept: Vec<String> = Vec::new();
     let mut dropped = 0usize;

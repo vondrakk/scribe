@@ -303,7 +303,7 @@ pub fn compose(ids: &[String], kind: &str, title: &str, ticket: &str) -> Result<
 }
 
 /// Format a duration (seconds) like the UI: "2h 4m" / "19m" / "45s".
-fn fmt_dur(s: f64) -> String {
+pub fn fmt_dur(s: f64) -> String {
     let s = s.round() as i64;
     if s < 60 {
         return format!("{s}s");

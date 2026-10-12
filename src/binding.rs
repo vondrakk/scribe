@@ -76,15 +76,24 @@ pub fn candidate_tickets(limit: usize) -> Vec<(String, f64, usize)> {
     v
 }
 
+pub const DEFAULT_INTERRUPT_MSG: &str = "manual w! interrupt";
+
 /// `w !` — flag the current activity as an unplanned interrupt. Records a seam
 /// event; the pipeline splits a distinct interrupt episode at this boundary.
-pub fn mark_interrupt() {
+/// `reason` is the engineer's own words for what was asked, and by whom.
+pub fn mark_interrupt(reason: Option<&str>) {
     let cur = get_binding();
     model::append_event(Event {
         kind: "seam".into(),
         action: Some("interrupt".into()),
         key: cur.map(|b| b.ticket),
-        msg: Some("manual w! interrupt".into()),
+        msg: Some(
+            reason
+                .map(str::trim)
+                .filter(|r| !r.is_empty())
+                .unwrap_or(DEFAULT_INTERRUPT_MSG)
+                .to_string(),
+        ),
         ..Default::default()
     });
     set_binding(None, "interrupt", "");

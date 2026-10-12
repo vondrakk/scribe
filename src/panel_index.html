@@ -225,6 +225,36 @@ pre.term{min-height:460px;height:64vh;max-height:none;overflow:auto;background:v
 border-radius:0 7px 7px 7px;padding:12px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;color:var(--code-fg);resize:vertical}
 #ptymount{height:66vh;min-height:420px;background:var(--code-bg);border:1px solid var(--line);border-radius:0 7px 7px 7px;padding:6px 8px;overflow:hidden}
 .xtermhost{height:100%;width:100%}
+/* review screen: one card per piece of work, one decision each */
+nav .navsep{flex:1}
+nav button.more{color:var(--mut);font-size:12.5px}
+main.narrow{max-width:860px;margin:0 auto}
+.rvtop{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
+.rvtop h2{font-size:18px;margin:0;font-weight:600}
+.rcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0}
+.rcard.interrupt{border-left:3px solid var(--warn)}
+.rhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.rtitle{font-size:16px;font-weight:600}
+.rtitle.key{color:var(--accent)}
+.rmeta{font-size:12.5px;color:var(--mut)}
+.rsec{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:600;margin:14px 0 4px}
+.rctx{display:flex;gap:10px;align-items:flex-start;padding:7px 10px;border:1px solid var(--line);border-radius:8px;margin:5px 0;font-size:13px}
+.rctx.off{border-style:dashed;color:var(--mut)}
+.rctx .rtext{flex:1;min-width:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.rctx .btn{padding:2px 9px;font-size:12px;flex:none}
+.rbody{font-size:13.5px;line-height:1.55;background:var(--input);border:1px solid var(--line);border-radius:8px;padding:10px 14px;overflow-wrap:anywhere}
+.rbody .rbh{font-weight:600;margin:8px 0 2px} .rbody .rbh:first-child{margin-top:0}
+.rbody ul{margin:2px 0 6px;padding-left:20px} .rbody p{margin:6px 0 0;color:var(--mut)} .rbody a{color:var(--accent)}
+.ract{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.ract input[type=text]{width:118px}
+.ract .rtime{width:74px}
+.rhint{font-size:12px;color:var(--mut);margin-top:6px}
+.rerr{font-size:12.5px;color:var(--bad);margin-top:6px}
+.rsent{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border:1px solid var(--ok-bd);background:var(--ok-bg);border-radius:10px;margin:8px 0;font-size:13px}
+.rsent code{background:var(--input);padding:2px 7px;border-radius:5px;color:var(--fg);overflow-wrap:anywhere}
+.rmock{padding:8px 12px;border:1px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn);border-radius:8px;font-size:12.5px;margin-bottom:10px}
+.rdone{text-align:center;padding:48px 20px;color:var(--mut)}
+.rdone b{display:block;font-size:17px;color:var(--fg);margin-bottom:4px}
 .xterm{height:100%}
 </style>
 <script>
@@ -244,7 +274,7 @@ border-radius:0 7px 7px 7px;padding:12px;font-size:12.5px;line-height:1.5;white-
 </script>
 </head>
 <body>
-<header><h1>🪶 Scribe</h1><div class="bind" id="bind">…</div>
+<header><h1>🪶 Scribe</h1><span style="flex:1"></span>
 <select class="btn themesel" id="themesel" title="Theme" aria-label="Theme"
   onchange="setTheme(this.value)">
   <optgroup label="Mode"><option value="auto">Auto (system)</option></optgroup>
@@ -262,37 +292,51 @@ border-radius:0 7px 7px 7px;padding:12px;font-size:12.5px;line-height:1.5;white-
 <div id="cap"></div>
 <main id="main"></main>
 <script>
-const TABS=["Stream","Logged","Terminal","Ansible","Scratchpad","Timeline","Episodes","Drafts","Unaccounted","Prompts","Settings"];
-let state={}, cur="Stream", pickerOpen=false, streamSel=new Set();
+// Three screens matter day to day; the rest (the manual builder, the workbench
+// and the pipeline's internals) stay reachable under "More".
+const TABS=["Review","Logged","Settings"];
+const MORE=["Stream","Drafts","Unaccounted","Episodes","Timeline","Prompts","Terminal","Ansible","Scratchpad"];
+const LABEL={Logged:"History",Stream:"Manual builder"};
+let moreOpen=false; try{moreOpen=localStorage.getItem('scribe-more')==='1';}catch(e){}
+let state={}, cur="Review", pickerOpen=false, intOpen=false, streamSel=new Set();
 const fmt=t=>new Date(t*1000).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
 const esc=s=>(s||"").replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 async function api(u,opt){const r=await fetch(u,opt);return r.json();}
 async function refresh(){state=await api('/api/state');draw();}
 // Something is mid-interaction (editing a draft, or the bind picker is open) —
 // used to suppress destructive live reloads.
-function busy(){return pickerOpen || !!document.querySelector('textarea');}
+function busy(){return pickerOpen || intOpen || !!document.querySelector('textarea');}
 function drawNav(){
   const n=document.getElementById('nav');n.innerHTML='';
-  TABS.forEach(t=>{const b=document.createElement('button');b.textContent=t;
+  const add=(t,showCount)=>{const b=document.createElement('button');b.textContent=LABEL[t]||t;
     if(t===cur)b.className='on';
-    const c=state.counts&&state.counts[t.toLowerCase()];
+    const c=showCount&&state.counts&&state.counts[t.toLowerCase()];
     if(c)b.innerHTML+=`<span class="count">${c}</span>`;
-    b.onclick=()=>{cur=t;load();};n.appendChild(b);});
-  const bd=state.binding;
-  document.getElementById('bind').innerHTML = bd&&bd.ticket
-    ? `bound to <b>${bd.ticket}</b> <span class="mut">(${bd.source})</span>`
-    : `⚠ <span class="mut">no active ticket</span>`;
+    b.onclick=()=>{cur=t;load();};n.appendChild(b);};
+  TABS.forEach(t=>add(t,t==='Review'));
+  const open=moreOpen||MORE.includes(cur);
+  const sep=document.createElement('span');sep.className='navsep';n.appendChild(sep);
+  if(open)MORE.forEach(t=>add(t,false));
+  const mb=document.createElement('button');mb.className='more';mb.id='morebtn';mb.textContent=open?'Less ‹':'More ›';
+  mb.onclick=()=>{moreOpen=!open; try{localStorage.setItem('scribe-more',moreOpen?'1':'0');}catch(e){}
+    if(!moreOpen&&MORE.includes(cur))cur='Review'; load();};
+  n.appendChild(mb);
+  document.getElementById('main').className=(cur==='Review'||cur==='Logged'||cur==='Settings')?'narrow':'';
 }
 function drawBar(){
   const bd=state.binding, live=state.capture_live;
   let h=`<span class="dot ${live?'on':'off'}" title="${live?'capturing':'no recent capture'}"></span>`;
-  h+=`<span class="binfo">${bd&&bd.ticket?`Active: <b>${bd.ticket}</b> <span class="mut">(${bd.source})</span>`:'<span class="mut">no active ticket</span>'}</span>`;
+  h+=`<span class="binfo">${bd&&bd.ticket?`Working on <b>${esc(bd.ticket)}</b>`:'<span class="mut">No ticket set — work is still captured</span>'}</span>`;
   h+=`<span class="picker" id="picker"></span>`;
   h+=`<span style="flex:1"></span>`;
-  h+=`<button class="btn" onclick="openPicker()">Bind…</button>`;
-  h+=`<button class="btn" onclick="doInterrupt()">Mark interrupt</button>`;
-  h+=`<button class="btn go" onclick="reprocess()">↻ Process</button>`;
-  h+=`<span class="now mut">${(state.now||'').replace('T',' ')}</span>`;
+  if(intOpen){
+    h+=`<input type="text" id="intin" placeholder="What was asked, and by whom? (optional)" style="width:300px" onkeydown="if(event.key==='Enter')doInterrupt()">`;
+    h+=`<button class="btn ok" onclick="doInterrupt()">Start interruption</button>`;
+    h+=`<button class="btn" onclick="intOpen=false;draw()">✕</button>`;
+  } else {
+    h+=`<button class="btn" onclick="openPicker()">Change ticket</button>`;
+    h+=`<button class="btn" onclick="intOpen=true;draw();document.getElementById('intin').focus()">I got interrupted</button>`;
+  }
   document.getElementById('bar').innerHTML=h;
   if(pickerOpen)renderPicker();
 }
@@ -320,10 +364,13 @@ async function bindTo(t){
   pickerOpen=false; await refresh();
 }
 async function doInterrupt(){
-  await api('/api/interrupt',{method:'POST'}); await refresh();
+  const el=document.getElementById('intin'); const reason=el?el.value.trim():'';
+  await api('/api/interrupt',{method:'POST',body:JSON.stringify({reason})});
+  intOpen=false; await refresh();
 }
 async function load(){
   drawNav();const m=document.getElementById('main');m.innerHTML='<div class="empty">Loading…</div>';
+  if(cur==="Review")return renderReview(m);
   if(cur==="Timeline")return renderTimeline(m);
   if(cur==="Episodes")return renderEpisodes(m,false);
   if(cur==="Unaccounted")return renderEpisodes(m,true);
@@ -417,7 +464,146 @@ function dayLabel(ts){
   if(dk===yk)return 'Yesterday';
   return new Date(ts*1000).toLocaleDateString([], {weekday:'long',month:'short',day:'numeric'});
 }
-// ---- Stream: two-pane builder (activity feed + drag-to-combine) ----
+// ---- Review: Scribe proposes one update per piece of work; you send, edit or skip ----
+// Per-card UI state is keyed by card id so a live reload never loses typing.
+let rvList=[], rvHandoff=null, rvText={}, rvVals={}, rvEdit=new Set(), rvOpen=new Set(), rvErr={}, rvSent=[], rvClip=false, rvHand=false;
+// Show the update the way Jira will: headings and bullets, not markup.
+function rvRender(body){
+  let h='', inList=false; const close=()=>{ if(inList){h+='</ul>';inList=false;} };
+  const inline=t=>esc(t).replace(/\*([^*]+)\*/g,'<b>$1</b>').replace(/(https?:\/\/[^\s)\]]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
+  (body||'').split('\n').forEach(l=>{
+    const hd=l.match(/^h[1-3]\. (.*)$/), bl=l.match(/^[*-] (.*)$/);
+    if(hd){close(); h+=`<div class="rbh">${inline(hd[1])}</div>`;}
+    else if(bl){ if(!inList){h+='<ul>';inList=true;} h+=`<li>${inline(bl[1])}</li>`; }
+    else if(l.trim()){close(); h+=`<p>${inline(l)}</p>`;}
+    else close();
+  });
+  close(); return h;
+}
+function rvBody(c){ return rvText[c.id]!==undefined?rvText[c.id]:c.body; }
+function rvVal(c,k,dflt){ const v=(rvVals[c.id]||{})[k]; return v!==undefined?v:dflt; }
+function rvSet(i,k,v){ const c=rvList[i]; if(!c)return; (rvVals[c.id]=rvVals[c.id]||{})[k]=v; }
+function rvWhen(c){
+  const day=dayLabel(c.end_ts), t=x=>new Date(x*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  return c.kind==='thread'?`${day} ${t(c.end_ts)}`:`${day} ${t(c.start_ts)}–${t(c.end_ts)}`;
+}
+async function renderReview(m){
+  const d=await api('/api/review'); rvList=d.cards||[]; rvHandoff=d.handoff||null;
+  const mock=(state.config||{}).publish_backend!=='atlassian';
+  let h='';
+  rvSent.forEach((s,i)=>{
+    h+=`<div class="rsent"><span>✓ ${s.mock?'Practice-sent':'Sent'} to <b>${esc(s.ref)}</b></span>
+      ${s.mock?'':`<a href="${esc(s.url)}" target="_blank" rel="noopener" class="btn">open ↗</a>`}
+      <span class="mut">Reply in the chat thread:</span> <code>${esc(s.reply)}</code>
+      <button class="btn" onclick="rvCopy(${i},this)">Copy</button>
+      <span style="flex:1"></span><button class="btn" onclick="rvSent.splice(${i},1);load()">✕</button></div>`;
+  });
+  if(mock)h+=`<div class="rmock">Practice mode — Send writes a local file and nothing reaches Jira. Connect Jira in Settings when you are ready.</div>`;
+  const n=rvList.length;
+  h+=`<div class="rvtop"><h2>${n?`${n} update${n>1?'s':''} to review`:'Review'}</h2>
+    <span class="mut">Nothing leaves this machine until you press Send.</span><span style="flex:1"></span>
+    ${rvClip?'':`<button class="btn" id="clipbtn" onclick="rvClip=true;load()">＋ Add a chat thread</button>`}</div>`;
+  if(rvClip){
+    h+=`<div class="rcard"><div class="rtitle">Add a chat thread</div>
+      <div class="rhint">Copy the messages in Slack and paste them here. Scribe attaches them to the work they explain — or run <span class="mono">scribe clip</span> in a terminal to take them straight from the clipboard.</div>
+      <textarea id="cliptext" style="margin-top:10px" placeholder="Paste the thread…"></textarea>
+      <div class="ract"><input type="text" id="cliptkt" placeholder="ticket (optional)">
+        <button class="btn go" onclick="rvAddClip()">Add</button>
+        <button class="btn" onclick="rvClip=false;load()">Cancel</button><span class="rerr" id="cliperr"></span></div></div>`;
+  }
+  if(!n)h+=`<div class="rdone"><b>You're all caught up.</b>${state.capture_live?'Work you do in your terminal will appear here.':'Nothing captured recently — see the note above to switch capture on.'}</div>`;
+  rvList.forEach((c,i)=>{h+=rvCard(c,i);});
+  if(rvHandoff){
+    const x=rvHandoff;
+    h+=`<div class="rcard"><div class="rhead"><span class="rtitle">Handoff note for the next shift</span>
+      <span class="rmeta">Confluence page · ${esc(x.title)}</span></div>
+      ${rvHand?`<div class="rbody" style="margin-top:10px">${rvRender(x.body)}</div>`:''}
+      <div class="ract"><button class="btn go" onclick="rvSendHandoff(${x.id})">Send to Confluence</button>
+        <button class="btn" onclick="rvHand=!rvHand;load()">${rvHand?'Hide':'Preview'}</button>
+        <button class="btn" onclick="cur='Drafts';load()">Edit</button>
+        <span class="rerr" id="handerr"></span></div></div>`;
+  }
+  m.innerHTML=h;
+}
+function rvCard(c,i){
+  const editing=rvEdit.has(c.id), open=rvOpen.has(c.id), thread=c.kind==='thread';
+  const chips=(c.kind==='interrupt'?'<span class="schip draft">interruption</span>':'')
+    +(c.active?'<span class="schip" title="You may still be working on this — sending now leaves later commands out">in progress</span>':'');
+  const meta=[rvWhen(c), thread?'':fmtDur(c.secs), c.ticket&&c.place?esc(c.place):''].filter(Boolean).join(' · ');
+  let h=`<div class="rcard ${c.kind}"><div class="rhead">
+    <span class="rtitle ${c.ticket?'key':''}">${esc(c.title)}</span><span class="rmeta">${meta}</span>${chips}</div>`;
+  const offered=(c.context||[]).filter(x=>!x.included);
+  if(offered.length){
+    h+=`<div class="rsec">Around that time in chat — add if it explains this work</div>`;
+    offered.forEach((x,j)=>{
+      const k=c.context.indexOf(x);
+      h+=`<div class="rctx off"><span class="rtext">${esc(x.text)} <span class="mut">· ${relTime(x.ts)}</span></span>
+        <button class="btn" onclick="rvInclude(${i},${k})">${(rvVal(c,'inc',[])).includes(x.id)?'Added ✓':'＋ Add'}</button></div>`;
+    });
+  }
+  h+=`<div class="rsec">${c.ticket||thread?'Update to post in Jira':'New Jira ticket'}</div>`;
+  h+=editing?`<textarea id="rvta-${i}" oninput="rvText[rvList[${i}].id]=this.value">${esc(rvBody(c))}</textarea>`
+            :`<div class="rbody">${rvRender(rvBody(c))}</div>`;
+  h+=`<div class="ract">`;
+  if(!c.ticket)h+=`<input type="text" placeholder="${thread?'ticket':'existing ticket?'}" value="${esc(rvVal(c,'ticket',''))}" oninput="rvSet(${i},'ticket',this.value)">`;
+  if(!thread)h+=`<input type="text" class="rtime" title="Time to log, e.g. 45m or 1h30m" value="${esc(rvVal(c,'time',fmtDur(c.secs)))}" oninput="rvSet(${i},'time',this.value)">`;
+  h+=`<button class="btn go" onclick="rvSend(${i})">Send to Jira</button>
+    <button class="btn" onclick="rvToggleEdit(${i})">${editing?'Done editing':'Edit'}</button>
+    <button class="btn" onclick="rvSkip(${i})" title="Not worth recording — moves to History, where you can bring it back">Skip</button>
+    <span style="flex:1"></span>
+    ${(c.commands||[]).length?`<span class="rlink" onclick="rvToggleOpen(${i})">${open?'hide':'show'} ${c.commands.length} command${c.commands.length>1?'s':''}</span>`:''}</div>`;
+  if(!c.ticket&&!thread)h+=`<div class="rhint">No ticket was set for this work. Send creates a new Jira ticket — or enter an existing one to log it there.</div>`;
+  if(rvErr[c.id])h+=`<div class="rerr">${esc(rvErr[c.id])}</div>`;
+  if(open)h+=`<div class="fdetail">${c.commands.map(x=>`<div class="cmd">${esc(x)}</div>`).join('')}</div>`;
+  return h+'</div>';
+}
+function rvToggleEdit(i){ const c=rvList[i]; if(rvEdit.has(c.id))rvEdit.delete(c.id); else rvEdit.add(c.id); load(); }
+function rvToggleOpen(i){ const c=rvList[i]; if(rvOpen.has(c.id))rvOpen.delete(c.id); else rvOpen.add(c.id); load(); }
+// Add an offered chat notification to the update: it goes under "Context".
+function rvInclude(i,k){
+  const c=rvList[i], x=c.context[k], inc=rvVal(c,'inc',[]).slice();
+  if(inc.includes(x.id))return;
+  inc.push(x.id); rvSet(i,'inc',inc);
+  const body=rvBody(c);
+  rvText[c.id]=body.startsWith('h3. Context\n')?body.replace('h3. Context\n','h3. Context\n'+x.line+'\n'):'h3. Context\n'+x.line+'\n\n'+body;
+  load();
+}
+function rvPayload(c){
+  const used=(c.context||[]).filter(x=>x.included||rvVal(c,'inc',[]).includes(x.id)).map(x=>x.id);
+  return {episode_ids:c.episode_ids||[], context_ids:used, ticket:c.ticket||rvVal(c,'ticket','').trim(),
+    title:c.kind==='interrupt'&&c.note?c.note:('Unplanned work'+(c.place?' in '+c.place:'')),
+    body:rvBody(c), secs:Math.max(0,parseDur(rvVal(c,'time',fmtDur(c.secs))))};
+}
+function rvForget(c){ delete rvText[c.id]; delete rvVals[c.id]; delete rvErr[c.id]; rvEdit.delete(c.id); rvOpen.delete(c.id); }
+async function rvSend(i){
+  const c=rvList[i]; if(!c)return;
+  const r=await api('/api/review/send',{method:'POST',body:JSON.stringify(rvPayload(c))});
+  if(!r.ok){ rvErr[c.id]='Not sent: '+(r.error||'error'); load(); return; }
+  rvSent.unshift({ref:r.ref,url:r.url,reply:r.reply,mock:r.mock}); rvSent=rvSent.slice(0,5);
+  rvForget(c); await refresh(); load();
+}
+async function rvSkip(i){
+  const c=rvList[i]; if(!c)return;
+  await api('/api/review/skip',{method:'POST',body:JSON.stringify({episode_ids:c.episode_ids||[],context_ids:(c.context||[]).map(x=>x.id)})});
+  rvForget(c); await refresh(); load();
+}
+async function rvAddClip(){
+  const text=document.getElementById('cliptext').value, ticket=document.getElementById('cliptkt').value;
+  const r=await api('/api/context/clip',{method:'POST',body:JSON.stringify({text,ticket})});
+  if(!r.ok){ document.getElementById('cliperr').textContent=r.error||'failed'; return; }
+  rvClip=false; await refresh(); load();
+}
+async function rvSendHandoff(id){
+  const r=await api('/api/drafts/'+id+'/publish',{method:'POST'});
+  if(!r.ok){ document.getElementById('handerr').textContent='Not sent: '+(r.error||'error'); return; }
+  rvSent.unshift({ref:r.ref,url:r.url,reply:'Handoff note: '+r.url,mock:(state.config||{}).publish_backend!=='atlassian'});
+  await refresh(); load();
+}
+async function rvCopy(i,btn){
+  try{ await navigator.clipboard.writeText(rvSent[i].reply); btn.textContent='Copied ✓'; }
+  catch(e){ btn.textContent='Select the text to copy'; }
+}
+// ---- Manual builder (was "Stream"): activity feed + drag-to-combine ----
 let streamItems={}, buildIds=[], builtDraftId=null, expanded=new Set(), tagFilter='', showRules=false, groupMode='project';
 function prettyCwd(p){ if(!p)return ''; return p.replace(/^\/home\/[^/]+/,'~'); }
 function fmtDur(s){ s=Math.round(s||0); if(s<60)return s+'s'; const m=Math.round(s/60); if(m<60)return m+'m'; return Math.floor(m/60)+'h '+(m%60)+'m'; }
@@ -726,8 +912,8 @@ async function _renderLogged(m){
   const totals=d.totals||[], entries=d.entries||[];
   const grand=totals.reduce((a,b)=>a+(b.secs||0),0);
   const sel=buildIds.length;
-  let h=`<div class="card"><div class="row"><b>Logged</b>
-    <span class="mut">handled work — combined, logged, sent or disposed</span>
+  let h=`<div class="card"><div class="row"><b>History</b>
+    <span class="mut">what you sent, logged or skipped</span>
     <span style="flex:1"></span>${entries.length?`<button class="btn" onclick="copyWeek()">⧉ copy week</button>`:''}${grand?` <b>${fmtDur(grand)}</b> tracked`:''}</div>
     <div class="mut" id="lgmsg" style="font-size:12px;margin-top:4px"></div>
     <div id="tsbox" style="display:none;margin-top:8px"></div>`;
@@ -735,7 +921,7 @@ async function _renderLogged(m){
     h+='<div class="wltotals">'+totals.map(t=>`<div class="wlbar"><span class="wlproj mono">${esc(prettyCwd(t.project))}</span><span class="wlsecs"><b>${fmtDur(t.secs)}</b></span></div>`).join('')+'</div>';
   h+='</div>';
   if(!entries.length){
-    h+='<div class="empty">Nothing logged yet. On the Stream, select work and Combine / Log / Dispose it.</div>';
+    h+='<div class="empty">Nothing here yet. Updates you send or skip on Review are kept here.</div>';
     m.innerHTML=h; return;
   }
   if(sel) h+=`<div class="selbar">${sel} work item${sel>1?'s':''} selected on the Stream — pick “＋ add” on an event below to append ${sel>1?'them':'it'}.</div>`;
@@ -951,7 +1137,7 @@ async function renderSettings(m){
     <ul class="mut" style="line-height:1.8">
       <li>Raw capture is local-only &amp; auto-expires after <b>${c.retention_days}d</b>.</li>
       <li>No manager-facing per-engineer feed. Shared surface = normal Jira/Confluence.</li>
-      <li>Review-before-send: every artifact above is approved here first.</li>
+      <li>Review-before-send: nothing is posted until you press Send on it.</li>
       <li>Mock publish posts <b>as the engineer</b> (per-user OAuth, no admin token).</li>
       <li>Metrics would be aggregate-only (sprint/team), no per-engineer drilldown.</li>
     </ul></div>
@@ -985,6 +1171,13 @@ async function renderSettings(m){
       <div class="actions"><button class="btn go" onclick="saveCfg()">Save</button></div>
       <p class="mut" style="font-size:12px">GitLab MRs (assigned + to-review) need the base URL here and <b>GITLAB_TOKEN</b> in the env. Assigned Jira issues use the Atlassian auth above. With auto-refresh on, a background thread pulls in new items on its own; you can still hit <b>↻ refresh inbox</b> on the Stream (or <code>scribe pull</code>) any time.</p>
     </div>
+    <div class="card"><div class="row"><b>Chat context</b>
+      <span class="status ${c.capture_notifications?'published':'draft'}">${c.capture_notifications?'listening':'off'}</span></div>
+      <label style="display:flex;gap:6px;align-items:center;margin:10px 0 0;color:var(--fg);font-size:13px"><input type="checkbox" id="capnot" style="width:auto" ${c.capture_notifications?'checked':''}> Note who messaged me, from desktop notifications (Linux)</label>
+      <label>Apps to listen to (comma-separated)</label><input type="text" id="notapps" value="${esc(c.notification_apps||'slack')}">
+      <div class="actions"><button class="btn go" onclick="saveCfg()">Save</button></div>
+      <p class="mut" style="font-size:12px">When on, Scribe records the sender, channel and preview of chat notifications your desktop already shows. They stay on this machine, expire with the rest of the capture, and are only <i>offered</i> on a Review card — never added to an update unless you add them. For whole threads, copy them and use <b>＋ Add a chat thread</b> or <code>scribe clip</code>.</p>
+    </div>
     <div class="card"><div class="row"><b style="color:var(--bad)">Reset</b></div>
       <p class="mut" style="font-size:12.5px">Wipe captured activity, episodes, drafts, and AI prompts for a clean slate. Published artifacts are kept unless you check the box. Cannot be undone.</p>
       <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="rstall" style="width:auto"> also remove published artifacts</label>
@@ -1014,7 +1207,9 @@ async function saveCfg(){
     confluence_space_id:document.getElementById('csid').value,
     gitlab_base_url:(document.getElementById('glurl')||{}).value,
     jira_jql:(document.getElementById('jjql')||{}).value,
-    inbox_refresh_seconds:+((document.getElementById('inbsec')||{}).value||0)})});
+    inbox_refresh_seconds:+((document.getElementById('inbsec')||{}).value||0),
+    capture_notifications:!!(document.getElementById('capnot')||{}).checked,
+    notification_apps:(document.getElementById('notapps')||{}).value||'slack'})});
   await refresh();load();
 }
 let lastSig='';
@@ -1047,17 +1242,15 @@ document.addEventListener('click',e=>{ const m=document.querySelector('.menu'); 
 
 // ---- Guided tour ----
 const TOUR=[
-  {title:'Welcome to Scribe 🪶', body:'Scribe passively captures your terminal + git work and turns it into draft Jira / Confluence artifacts you review before anything is sent. Here is the 60-second tour.'},
-  {sel:'#bar', title:'Capture status', body:'The dot here is green while Scribe is capturing your shell. Enable capture once per terminal by sourcing the snippet that `scribe up` prints.'},
-  {sel:'#bind', title:'Active ticket', body:'Your current bound ticket. Work auto-binds from a branch key like feat/OPS-1234 — otherwise bind it here, or in the shell with `w OPS-1234`.'},
-  {sel:'nav', title:'The tabs', body:'Stream is your live activity feed. Drafts holds generated artifacts awaiting review. Logged, Timeline, Settings and more live here too.'},
-  {sel:'.gtoggle', title:'Grouped by day → project', body:'Your Stream groups work into Days, then Projects, with the newest items at the top of each group as they come in. You can also switch to by day / by tag.'},
-  {sel:'.buildpane', title:'Combine into a draft', body:'Drag related work items here — or use the ⊕ combine buttons on a day or project — to compose one worklog or handoff draft.'},
-  {sel:'#themesel', title:'Themes', body:'Switch between Auto, Dark (Slate, Midnight, Nord) and Light (Paper, Solarized) anytime. Your choice is remembered.'},
-  {sel:'#menubtn', title:"That's it!", body:'Open this menu (☰) anytime to replay the tour. Now go run some commands — your work shows up in the Stream automatically.'},
+  {title:'Welcome to Scribe 🪶', body:'Scribe watches the work you do in your terminal and writes the Jira update for you. You read it, then send, edit or skip. That is the whole job.'},
+  {sel:'#bar', title:'What you are working on', body:'Green dot = capturing. The ticket comes from your branch name (feat/OPS-1234) — change it here if it is wrong, and say so when you get pulled onto something else.'},
+  {sel:'main', title:'Review', body:'One card per piece of work, with the update Scribe would post. Send it, edit it first, or skip it. Nothing leaves this machine until you press Send.'},
+  {sel:'#clipbtn', title:'Bring in the why', body:'The reason for the work is usually in chat. Copy a thread and add it here (or run scribe clip) and it goes into the update — so the answer lives in Jira, not in Slack.'},
+  {sel:'#nav', title:'Everything else', body:'History shows what you sent or skipped. Settings connects Jira. The detailed views and tools are under More.'},
+  {sel:'#menubtn', title:"That's it", body:'Replay this tour from the ☰ menu anytime.'},
 ];
 let tourI=-1;
-function startTour(){ cur='Stream'; load(); tourI=0; setTimeout(showTourStep,150); }
+function startTour(){ cur='Review'; load(); tourI=0; setTimeout(showTourStep,150); }
 function endTour(){ tourI=-1; const ov=document.getElementById('tourov'); if(ov)ov.remove(); try{localStorage.setItem('scribe-toured','1');}catch(e){} }
 function tourNext(){ if(tourI<TOUR.length-1){tourI++; showTourStep();} else endTour(); }
 function tourBack(){ if(tourI>0){tourI--; showTourStep();} }

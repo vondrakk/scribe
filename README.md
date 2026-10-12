@@ -55,11 +55,39 @@ $BIN install-hooks /path/to/repo                 # optional: git branch/commit e
 # the panel's capture dot turns green and episodes/drafts appear live.
 ```
 
-Everything after launch happens in the **panel**: the top bar shows the active
-ticket and a live capture indicator, with **Bind… / Mark interrupt / Process**
-controls (the `w` CLI is no longer required); tabs auto-refresh and the pipeline
-re-runs automatically when new activity is captured. The lower-level commands
-(`init`, `process`, `panel`, `w`) still exist for scripting/headless use.
+Everything after launch happens in the **panel**, on one screen: **Review**.
+Scribe groups your captured work into one card per ticket per day (or per
+project when no ticket was set) and writes the Jira update for it. You **Send**
+it, **Edit** it first, or **Skip** it — nothing is posted until you press Send.
+The top bar shows the active ticket and a live capture indicator, with **Change
+ticket** and **I got interrupted** (which asks what was asked, and by whom).
+**History** keeps what you sent or skipped; **Settings** connects Jira. The
+manual builder, the workbench (Terminal / Ansible / Scratchpad) and the
+pipeline views (Drafts, Episodes, Timeline, …) are under **More**. The
+lower-level commands (`init`, `process`, `panel`, `w`) still exist for
+scripting/headless use.
+
+## Chat context (the "why") — no Slack app needed
+
+The request and the decision usually live in chat. Scribe brings them into the
+Jira update without any Slack API access:
+
+- **Add a thread** — copy the messages in Slack, then run `scribe clip` (reads
+  the clipboard; `scribe clip -` reads stdin; `--ticket OPS-1234` to say where
+  it belongs) or use **＋ Add a chat thread** on Review. It attaches to the
+  ticket it names, else to the work you were doing at the time, and goes into
+  the update under *Context*. With an LLM backend the thread is distilled to
+  problem / decision / outcome; with the stub backend the update carries the
+  opening message, who took part, and the permalink if one was copied.
+- **Notifications (opt-in, Linux)** — Settings → *Chat context* records the
+  sender, channel and preview of chat notifications your desktop already
+  shows (via the D-Bus session bus). They are only *offered* on the matching
+  card; nothing is added to an update unless you add it.
+- **Reply line** — after Send, Review shows a one-liner to paste back into the
+  thread ("Written up in OPS-1234: …") so chat points at Jira.
+
+All of it stays in `$SCRIBE_HOME/context.json`, expires with raw capture
+(`sweep`), and leaves the machine only inside an update you send.
 
 The generated `scribe.sh` and the git hooks embed the absolute path of the
 binary that produced them, so `scribe` need not be on `PATH`.
@@ -74,7 +102,7 @@ silently via the git hook; otherwise resolve inline:
 | `w` | show the current binding |
 | `w OPS-1250` | bind to a ticket |
 | `w ?` | list candidate tickets (recent keys seen) |
-| `w !` | mark an interrupt — splits a distinct episode |
+| `w ! [reason]` | mark an interrupt — splits a distinct episode; the reason (what was asked, by whom) goes into its update |
 
 The prompt-line segment (`scribe prompt`) prints `[OPS-1234]` when bound, or
 `[⚠ unbound]` for unbound activity inside a repo.
@@ -88,6 +116,8 @@ The prompt-line segment (`scribe prompt`) prints `[OPS-1234]` when bound, or
 | `capture-shell <cmd> <exit> <cwd> [repo] [branch]` | record a shell command (the PROMPT_COMMAND hot path) |
 | `event --type .. --action .. [--message ..] [--sha ..]` | record a git event (git hooks call this) |
 | `w [TICKET\|?\|!]` | binding verbs |
+| `clip [TEXT\|-] [--ticket KEY]` | add a chat thread (clipboard by default) as context for your work |
+| `listen` | record chat notifications as local context (Linux; the panel does this itself when enabled) |
 | `ai [TEXT] [--tool --model --session]` | record an AI prompt (TEXT or stdin) to the per-session prompt log |
 | `prompt` | emit the prompt-line segment |
 | `process` | sessionize → classify → summarize → emit drafts |
@@ -189,7 +219,9 @@ After that, **Publish** in the panel posts to real Jira/Confluence. Any failure
 | `llm.rs` | pluggable summary backend: stub / Anthropic / OpenAI-compatible, with fallback |
 | `drafts.rs` | Jira worklog / draft ticket / Confluence handoff + status carryover |
 | `publish.rs` | mock publish "as the engineer" (per-user OAuth, no admin token) |
-| `panel.rs` + `panel_index.html` | tiny_http server + the multi-tab web UI |
+| `context.rs` | chat context: pasted threads (`clip`) + the opt-in notification listener |
+| `review.rs` | the Review screen: cards per ticket/day, proposed update, send / skip |
+| `panel.rs` + `panel_index.html` | tiny_http server + the web UI (Review · History · Settings · More) |
 | `main.rs` | clap CLI + shell/hook installers |
 
 ## How this maps to the PRD
