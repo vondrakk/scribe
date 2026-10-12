@@ -22,6 +22,7 @@ mod panel;
 mod pipeline;
 mod publish;
 mod review;
+mod secrets;
 
 use clap::{Parser, Subcommand};
 

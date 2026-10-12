@@ -50,6 +50,9 @@ fn client_secret() -> Result<String, String> {
 }
 
 pub fn is_authenticated() -> bool {
+    if crate::secrets::load().atlassian.is_set() {
+        return true;
+    }
     let cfg = config::load();
     if !cfg.atlassian_conf_file.is_empty() {
         return creds_from_conf(&cfg.atlassian_conf_file).is_ok();
@@ -213,6 +216,16 @@ struct Creds {
 }
 
 fn resolve_creds() -> Result<Creds, String> {
+    // An API token saved in Settings wins, then a conf file, then OAuth.
+    let saved = crate::secrets::load().atlassian;
+    if saved.is_set() {
+        return Ok(Creds {
+            auth: format!("Basic {}", b64(&format!("{}:{}", saved.email, saved.token))),
+            jira_base: format!("{}/rest/api/3", saved.site),
+            conf_base: format!("{}/wiki/api/v2", saved.site),
+            site_url: saved.site,
+        });
+    }
     let cfg = config::load();
     if !cfg.atlassian_conf_file.is_empty() {
         return creds_from_conf(&cfg.atlassian_conf_file);
@@ -224,6 +237,16 @@ fn resolve_creds() -> Result<Creds, String> {
         conf_base: format!("https://api.atlassian.com/ex/confluence/{}/wiki/api/v2", t.cloud_id),
         site_url: t.site_url,
     })
+}
+
+/// The account the current credentials authenticate as — used by Settings'
+/// connection test.
+pub fn whoami() -> Result<String, String> {
+    let c = resolve_creds()?;
+    let me = get_json(&format!("{}/myself", c.jira_base), &c.auth)?;
+    let name = me["displayName"].as_str().or_else(|| me["emailAddress"].as_str());
+    name.map(|n| format!("signed in as {n}"))
+        .ok_or_else(|| "unexpected reply from Jira".to_string())
 }
 
 fn expand_tilde(p: &str) -> String {

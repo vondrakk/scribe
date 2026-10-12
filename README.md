@@ -176,6 +176,23 @@ export ANTHROPIC_API_KEY=sk-ant-...
 scribe process     # episode summaries now come from Claude, stub on failure
 ```
 
+## Connections (GitLab + Atlassian tokens)
+
+**Settings → Connections** is where the accounts go:
+
+- **GitLab** — one row per GitLab instance (name, address, personal access
+  token with `read_api`). Add as many as you use; merge requests from all of
+  them land in the inbox.
+- **Atlassian** — site, email and an API token (id.atlassian.com → Security →
+  API tokens). Used for Jira and Confluence, both reading and posting.
+- **Post to the real Jira and Confluence** — off is practice mode (`mock`).
+
+Tokens are stored in `$SCRIBE_HOME/secrets.json` (mode 0600), apart from
+`config.json`, and the panel never sends them back to the browser. Changing an
+address drops its saved token, so it must be typed again. **Test connections**
+shows who each token signs in as. `GITLAB_TOKEN` + `gitlab_base_url`, the conf
+file and OAuth below still work.
+
 ## Publishing (mock → real Atlassian Cloud)
 
 `publish_backend = "mock"` (default) writes an audit record to `published/*.json`

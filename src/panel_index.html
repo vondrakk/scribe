@@ -82,7 +82,7 @@ border-radius:7px;padding:10px;font-family:ui-monospace,monospace;font-size:12.5
 .toolbar{display:flex;gap:8px;margin-bottom:12px}
 small.src{color:var(--mut)}
 label{display:block;margin:12px 0 4px;color:var(--mut);font-size:12px}
-input[type=number],input[type=text]{background:var(--input);color:var(--fg);border:1px solid var(--line);
+input[type=number],input[type=text],input[type=password]{background:var(--input);color:var(--fg);border:1px solid var(--line);
 border-radius:6px;padding:6px 8px;width:140px}
 #bar{display:flex;align-items:center;gap:10px;padding:8px 20px;border-bottom:1px solid var(--line);
 background:var(--panel);position:sticky;top:49px;z-index:4;flex-wrap:wrap}
@@ -250,6 +250,10 @@ main.narrow{max-width:860px;margin:0 auto}
 .ract .rtime{width:74px}
 .rhint{font-size:12px;color:var(--mut);margin-top:6px}
 .rerr{font-size:12.5px;color:var(--bad);margin-top:6px}
+.connrow{display:grid;grid-template-columns:150px 1fr 1fr;gap:0 12px;align-items:end}
+.connrow input{width:100%}
+.connrow .connres{grid-column:1/-1;font-size:12px;margin-top:4px;min-height:4px}
+@media(max-width:720px){.connrow{grid-template-columns:1fr}}
 .rsent{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border:1px solid var(--ok-bd);background:var(--ok-bg);border-radius:10px;margin:8px 0;font-size:13px}
 .rsent code{background:var(--input);padding:2px 7px;border-radius:5px;color:var(--fg);overflow-wrap:anywhere}
 .rmock{padding:8px 12px;border:1px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn);border-radius:8px;font-size:12.5px;margin-bottom:10px}
@@ -305,7 +309,8 @@ async function api(u,opt){const r=await fetch(u,opt);return r.json();}
 async function refresh(){state=await api('/api/state');draw();}
 // Something is mid-interaction (editing a draft, or the bind picker is open) —
 // used to suppress destructive live reloads.
-function busy(){return pickerOpen || intOpen || !!document.querySelector('textarea');}
+function busy(){const a=document.activeElement;
+  return pickerOpen || intOpen || !!document.querySelector('textarea') || (cur==='Settings' && !!a && a.tagName==='INPUT');}
 function drawNav(){
   const n=document.getElementById('nav');n.innerHTML='';
   const add=(t,showCount)=>{const b=document.createElement('button');b.textContent=LABEL[t]||t;
@@ -1151,25 +1156,40 @@ async function renderSettings(m){
       <div class="actions"><button class="btn go" onclick="saveCfg()">Save</button></div>
       <p class="mut" style="font-size:12px">anthropic → set <b>ANTHROPIC_API_KEY</b>; openai → optional <b>OPENAI_API_KEY</b> + base URL. Non-stub backends fall back to the offline stub on any error.</p>
     </div>
+    <div class="card"><div class="row"><b>Connections</b>
+      <span class="status ${state.inbox&&state.inbox.gitlab?'published':'draft'}">GitLab ${state.inbox&&state.inbox.gitlab?'connected':'off'}</span>
+      <span class="status ${state.atlassian_authed?'published':'draft'}">Atlassian ${state.atlassian_authed?'connected':'off'}</span></div>
+      <p class="mut" style="font-size:12.5px;margin:8px 0 0">Tokens are kept in <code>secrets.json</code> in Scribe's folder, readable only by you. They are never shown again after saving — leave a token box empty to keep the saved one.</p>
+      <div style="margin-top:12px"><b style="font-size:13px">GitLab</b> <span class="mut" style="font-size:12px">— one row per GitLab you use; token needs the <code>read_api</code> scope</span></div>
+      <div id="glrows"></div>
+      <div class="actions"><button class="btn" onclick="connAddGitlab()">＋ Add a GitLab</button></div>
+      <div style="margin-top:12px"><b style="font-size:13px">Atlassian (Jira + Confluence)</b> <span class="mut" style="font-size:12px">— API token from id.atlassian.com → Security → API tokens</span></div>
+      <div class="connrow">
+        <div><label>Site</label><input type="text" id="atsite" placeholder="https://yourco.atlassian.net"></div>
+        <div><label>Email</label><input type="text" id="atemail" placeholder="you@yourco.com"></div>
+        <div><label>API token</label><input type="password" id="attoken" autocomplete="off"></div>
+        <div class="connres" id="atres"></div>
+      </div>
+      <label style="display:flex;gap:6px;align-items:center;margin:12px 0 0;color:var(--fg);font-size:13px"><input type="checkbox" id="connlive" style="width:auto" ${c.publish_backend==='atlassian'?'checked':''}> Post to the real Jira and Confluence when I press Send (off = practice mode, nothing leaves this machine)</label>
+      <div class="actions"><button class="btn go" onclick="connSave()">Save</button><button class="btn" onclick="connTest()">Test connections</button><span class="mut" id="connmsg" style="font-size:12px"></span></div>
+    </div>
     <div class="card"><div class="row"><b>Publishing</b>
       <span class="status ${state.atlassian_authed?'published':'draft'}">${state.atlassian_authed?'Atlassian: authorized':'Atlassian: not authorized'}</span></div>
-      <label>Backend (mock · atlassian)</label><input type="text" id="pub" value="${esc(c.publish_backend||'mock')}">
       <label>Atlassian OAuth client id</label><input type="text" id="acid" value="${esc(c.atlassian_client_id||'')}" style="width:340px">
       <label>…or Atlassian conf file (skip OAuth)</label><input type="text" id="aconf" value="${esc(c.atlassian_conf_file||'')}" placeholder="~/.atlassian.conf" style="width:340px">
       <label>Jira project key (for new issues)</label><input type="text" id="jpk" value="${esc(c.jira_project_key||'')}">
       <label>Jira issue type</label><input type="text" id="jit" value="${esc(c.jira_issue_type||'Task')}">
       <label>Confluence space id (for handoffs)</label><input type="text" id="csid" value="${esc(c.confluence_space_id||'')}">
       <div class="actions"><button class="btn go" onclick="saveCfg()">Save</button></div>
-      <p class="mut" style="font-size:12px">Two ways to authenticate: <b>(a)</b> OAuth — register a 3LO app with callback <code>http://127.0.0.1:${c.atlassian_redirect_port||8799}/callback</code>, set the client id, export <b>ATLASSIAN_CLIENT_SECRET</b>, run <code>scribe auth</code>; or <b>(b)</b> a conf file above (JSON or key=value with <code>site</code> + <code>email</code> + <code>token</code> for an API token, or <code>bearer</code>). mock writes to published/*.json offline.</p>
+      <p class="mut" style="font-size:12px">The simplest way to sign in is the Atlassian API token under <b>Connections</b> above. Alternatives: <b>(a)</b> OAuth — register a 3LO app with callback <code>http://127.0.0.1:${c.atlassian_redirect_port||8799}/callback</code>, set the client id, export <b>ATLASSIAN_CLIENT_SECRET</b>, run <code>scribe auth</code>; or <b>(b)</b> a conf file above (JSON or key=value with <code>site</code> + <code>email</code> + <code>token</code> for an API token, or <code>bearer</code>). mock writes to published/*.json offline.</p>
     </div>
     <div class="card"><div class="row"><b>Inbound (stream)</b>
       <span class="status ${state.inbox&&state.inbox.gitlab?'published':'draft'}">GitLab ${state.inbox&&state.inbox.gitlab?'connected':'off'}</span>
       <span class="status ${state.inbox&&state.inbox.jira?'published':'draft'}">Jira ${state.inbox&&state.inbox.jira?'connected':'off'}</span></div>
-      <label>GitLab base URL</label><input type="text" id="glurl" value="${esc(c.gitlab_base_url||'')}" placeholder="https://gitlab.yourco.com" style="width:320px">
       <label>Jira JQL (what flows to you)</label><input type="text" id="jjql" value="${esc(c.jira_jql||'')}" style="width:520px">
       <label>Auto-refresh inbox every (seconds, 0 = off)</label><input type="number" id="inbsec" value="${c.inbox_refresh_seconds!=null?c.inbox_refresh_seconds:300}" style="width:120px">
       <div class="actions"><button class="btn go" onclick="saveCfg()">Save</button></div>
-      <p class="mut" style="font-size:12px">GitLab MRs (assigned + to-review) need the base URL here and <b>GITLAB_TOKEN</b> in the env. Assigned Jira issues use the Atlassian auth above. With auto-refresh on, a background thread pulls in new items on its own; you can still hit <b>↻ refresh inbox</b> on the Stream (or <code>scribe pull</code>) any time.</p>
+      <p class="mut" style="font-size:12px">GitLab merge requests (assigned + to-review) and assigned Jira issues use the accounts under <b>Connections</b> above. With auto-refresh on, a background thread pulls in new items on its own; you can still hit <b>↻ refresh inbox</b> on the Stream (or <code>scribe pull</code>) any time.</p>
     </div>
     <div class="card"><div class="row"><b>Chat context</b>
       <span class="status ${c.capture_notifications?'published':'draft'}">${c.capture_notifications?'listening':'off'}</span></div>
@@ -1183,6 +1203,58 @@ async function renderSettings(m){
       <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="rstall" style="width:auto"> also remove published artifacts</label>
       <div class="actions"><button class="btn bad" onclick="doReset()">Reset all data</button></div>
     </div>`;
+  connLoad();
+}
+// ---- Connections (tokens) ----
+let glConns=[];
+function connLoad(){
+  const k=state.connections||{gitlab:[],atlassian:{}};
+  glConns=(k.gitlab||[]).map((g,i)=>({id:i,name:g.name,base_url:g.base_url,token_set:g.token_set}));
+  if(!glConns.length)glConns=[{id:null,name:'',base_url:'',token_set:false}];
+  connDrawGitlab();
+  const a=k.atlassian||{};
+  document.getElementById('atsite').value=a.site||'';
+  document.getElementById('atemail').value=a.email||'';
+  document.getElementById('attoken').placeholder=a.token_set?'saved — leave empty to keep':'paste token';
+}
+function connDrawGitlab(res){
+  document.getElementById('glrows').innerHTML=glConns.map((g,i)=>`<div class="connrow">
+    <div><label>Name</label><input type="text" id="glname${i}" value="${esc(g.name||'')}" placeholder="e.g. work"></div>
+    <div><label>Address</label><input type="text" id="glurl${i}" value="${esc(g.base_url||'')}" placeholder="https://gitlab.yourco.com"></div>
+    <div><label>Access token</label><input type="password" id="gltok${i}" autocomplete="off" placeholder="${g.token_set?'saved — leave empty to keep':'paste token'}"></div>
+    <div class="connres">${connRes(res&&res[i])}<a href="#" onclick="connDropGitlab(${i});return false">remove</a></div></div>`).join('');
+}
+function connRes(r){
+  if(!r)return '';
+  return `<span class="status ${r.ok?'published':'discarded'}">${r.ok?'works':'failed'}</span> <span class="mut">${esc(r.detail||'')}</span> `;
+}
+function connRead(){
+  glConns.forEach((g,i)=>{
+    g.name=document.getElementById('glname'+i).value;
+    g.base_url=document.getElementById('glurl'+i).value;
+    g.token=document.getElementById('gltok'+i).value;});
+}
+function connAddGitlab(){connRead();glConns.push({id:null,name:'',base_url:'',token_set:false});connDrawGitlab();glConns.forEach((g,i)=>{if(g.token)document.getElementById('gltok'+i).value=g.token;});}
+function connDropGitlab(i){connRead();glConns.splice(i,1);connDrawGitlab();glConns.forEach((g,j)=>{if(g.token)document.getElementById('gltok'+j).value=g.token;});}
+async function connSave(){
+  connRead();
+  const msg=document.getElementById('connmsg');
+  const live=document.getElementById('connlive').checked;
+  const r=await api('/api/secrets',{method:'POST',body:JSON.stringify({
+    gitlab:glConns.map(g=>({id:g.id,name:g.name,base_url:g.base_url,token:g.token||''})),
+    atlassian:{site:document.getElementById('atsite').value,email:document.getElementById('atemail').value,token:document.getElementById('attoken').value}})});
+  if(r&&r.error){msg.textContent='Not saved: '+r.error;return false;}
+  await api('/api/config',{method:'POST',body:JSON.stringify({publish_backend:live?'atlassian':'mock'})});
+  await refresh();load();
+  return true;
+}
+async function connTest(){
+  if(!await connSave())return;
+  document.getElementById('connmsg').textContent='Testing…';
+  const r=await api('/api/secrets/test',{method:'POST',body:'{}'});
+  connDrawGitlab(r.gitlab||[]);
+  document.getElementById('atres').innerHTML=connRes(r.atlassian);
+  document.getElementById('connmsg').textContent='';
 }
 async function doReset(){
   if(!confirm('Wipe all captured activity, episodes, drafts and prompts? This cannot be undone.'))return;
@@ -1199,7 +1271,6 @@ async function saveCfg(){
     llm_backend:document.getElementById('llm').value,
     llm_model:document.getElementById('llmmodel').value,
     llm_base_url:document.getElementById('llmbase').value,
-    publish_backend:document.getElementById('pub').value,
     atlassian_client_id:document.getElementById('acid').value,
     atlassian_conf_file:(document.getElementById('aconf')||{}).value,
     jira_project_key:document.getElementById('jpk').value,

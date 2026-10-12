@@ -53,10 +53,10 @@ fn state_json() -> Value {
         "inbox": {
             "count": inbox::load().items.len(),
             "fetched_ts": inbox::load().fetched_ts,
-            "gitlab": !config::load().gitlab_base_url.is_empty()
-                && std::env::var("GITLAB_TOKEN").map(|v| !v.is_empty()).unwrap_or(false),
+            "gitlab": crate::gitlab::is_configured(),
             "jira": atlassian::is_authenticated(),
         },
+        "connections": crate::secrets::view(),
         "snippet": config::home().join("scribe.sh").to_string_lossy(),
         "now": chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string(),
     })
@@ -382,6 +382,24 @@ fn spawn_inbox_refresher() {
     });
 }
 
+/// True unless the request was made by another web page: a browser names the
+/// calling page in Origin, and for the panel's own calls that is the address
+/// it was served from.
+fn same_origin(request: &tiny_http::Request) -> bool {
+    let header = |name: &str| {
+        request
+            .headers()
+            .iter()
+            .find(|h| h.field.as_str().as_str().eq_ignore_ascii_case(name))
+            .map(|h| h.value.as_str().to_string())
+    };
+    match (header("origin"), header("host")) {
+        (None, _) => true, // not a cross-site browser request (CLI, curl)
+        (Some(origin), Some(host)) => origin == format!("http://{host}"),
+        (Some(_), None) => false,
+    }
+}
+
 pub fn serve() {
     let cfg = config::load();
     let addr = format!("{}:{}", cfg.panel_host, cfg.panel_port);
@@ -700,6 +718,22 @@ pub fn serve() {
                     .and_then(|v| v.get("reason").and_then(|x| x.as_str()).map(String::from));
                 binding::mark_interrupt(reason.as_deref());
                 (200, json!({"ok": true}).to_string(), false)
+            }
+            (Method::Post, "/api/secrets") => {
+                if !same_origin(&request) {
+                    (403, json!({"error": "tokens can only be saved from the panel itself"}).to_string(), false)
+                } else {
+                    match serde_json::from_str::<Value>(&body)
+                        .map_err(|e| e.to_string())
+                        .and_then(|v| crate::secrets::apply(&v))
+                    {
+                        Ok(()) => (200, json!({"ok": true}).to_string(), false),
+                        Err(e) => (400, json!({"error": e}).to_string(), false),
+                    }
+                }
+            }
+            (Method::Post, "/api/secrets/test") => {
+                (200, crate::secrets::test().to_string(), false)
             }
             (Method::Post, "/api/config") => {
                 if let Ok(v) = serde_json::from_str::<Value>(&body) {
