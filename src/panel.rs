@@ -401,15 +401,17 @@ fn same_origin(request: &tiny_http::Request) -> bool {
 }
 
 pub fn serve() {
+    if let Err(e) = try_serve() {
+        eprintln!("{e}");
+        std::process::exit(1);
+    }
+}
+
+/// Serve the panel until the process ends. Returns only if it could not start.
+pub fn try_serve() -> Result<(), String> {
     let cfg = config::load();
     let addr = format!("{}:{}", cfg.panel_host, cfg.panel_port);
-    let server = match Server::http(&addr) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("could not bind {}: {}", addr, e);
-            std::process::exit(1);
-        }
-    };
+    let server = Server::http(&addr).map_err(|e| format!("could not bind {addr}: {e}"))?;
     // Background inbox auto-refresh (off the request thread).
     spawn_inbox_refresher();
     // Opt-in chat-notification listener (idles while the setting is off).
@@ -806,4 +808,5 @@ pub fn serve() {
             .with_header(header);
         let _ = request.respond(response);
     }
+    Ok(())
 }

@@ -36,6 +36,34 @@ cargo build --release          # -> target/release/scribe
 Everything runs in an isolated sandbox (`/tmp/scribe-demo*`); your real repos
 and shell config are never touched. Remove the sandbox dirs to clean up.
 
+## Desktop app (Linux + macOS)
+
+The same panel as a native app: its own window, a launcher/dock icon, a tray
+(menu-bar) menu and start-at-login. It lives in `app/` (Tauri) and runs the
+panel service in-process, so there is no browser tab and nothing to start by
+hand. If `scribe up` is already running it joins that instead.
+
+- **Tray menu** — what you're working on and how many updates wait for review,
+  *I got interrupted*, *Add copied chat thread*, *Start at login*, *Quit*.
+- **Closing the window** keeps Scribe running in the tray. On a desktop with no
+  tray (stock GNOME without the AppIndicator extension) it minimizes instead.
+- **Links** to Jira, GitLab and chat threads open in your browser.
+- The `scribe` CLI is packaged beside the app (`/usr/bin/scribe` from the
+  `.deb`, `Scribe.app/Contents/MacOS/scribe` on macOS) — the shell and git
+  hooks call that, so capture works the same.
+
+```bash
+./run-app.sh            # check what is built / missing (changes nothing)
+./run-app.sh --start    # build and open the app from this checkout
+./run-app.sh --deps     # one-time: packaging prerequisites (sudo)
+./run-app.sh --bundle   # build the .deb
+./run-app.sh --install  # install it (sudo)
+```
+
+Releases attach `scribe-app-<version>-linux-amd64.deb` and
+`scribe-app-<version>-macos-arm64.dmg`. The macOS build is not signed or
+notarized, so the first launch needs right-click → Open.
+
 ## Quick start (GUI-first)
 
 ```bash
@@ -233,6 +261,7 @@ After that, **Publish** in the panel posts to real Jira/Confluence. Any failure
 
 | file | role |
 |---|---|
+| `lib.rs` | the core as a library, shared by the CLI and `app/` (desktop app) |
 | `config.rs` | paths + config (`$SCRIBE_HOME`) |
 | `model.rs` | data types + file-backed store (append-only JSONL + JSON state) |
 | `capture.rs` | git detection, event recording, retention sweep |

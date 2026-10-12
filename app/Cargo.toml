@@ -1,0 +1,16 @@
+[package]
+name = "scribe-app"
+version.workspace = true
+edition = "2021"
+description = "Scribe desktop app: the review panel in a native window, with a tray menu"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+scribe = { path = ".." }
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
+ureq = "2"
+serde_json = "1"

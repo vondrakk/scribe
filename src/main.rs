@@ -1,30 +1,8 @@
 //! Scribe — passive per-engineer work capture → draft artifacts (prototype).
 
-mod binding;
-mod capture;
-mod atlassian;
-mod config;
-mod context;
-mod drafts;
-mod gitlab;
-mod inbox;
-mod llm;
-mod model;
-mod notify;
-mod prompts;
-mod pty;
-mod rules;
-mod logbook;
-mod stream;
-mod timeadj;
-mod workbench;
-mod panel;
-mod pipeline;
-mod publish;
-mod review;
-mod secrets;
 
 use clap::{Parser, Subcommand};
+use scribe::{atlassian, binding, capture, config, context, inbox, model, panel, pipeline, prompts};
 
 #[derive(Parser)]
 #[command(name = "scribe", version, about = "Passive work capture → draft Jira/Confluence artifacts")]

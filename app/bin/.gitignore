@@ -1,0 +1,3 @@
+# CLI binaries copied here at bundle time (build-app.sh)
+*
+!.gitignore

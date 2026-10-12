@@ -1,8 +1,19 @@
+[workspace]
+members = ["app"]
+
+# One version for the CLI and the desktop app.
+[workspace.package]
+version = "0.3.0"
+
 [package]
 name = "scribe"
-version = "0.3.0"
+version.workspace = true
 edition = "2021"
 description = "Passive per-engineer work capture -> draft Jira/Confluence artifacts (prototype)"
+
+[lib]
+name = "scribe"
+path = "src/lib.rs"
 
 [[bin]]
 name = "scribe"

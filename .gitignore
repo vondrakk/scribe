@@ -6,3 +6,6 @@
 
 # Packaging output
 /dist/
+
+# Tauri generated schemas
+/app/gen/

@@ -78,9 +78,77 @@ jobs:
           name: ${{ matrix.label }}
           path: dist/*
 
+  # The desktop app (native window + tray) with the CLI packaged beside it.
+  # Linux is built on 22.04 so the .deb also installs on older releases.
+  app:
+    name: app ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            label: app-linux-x86_64
+            bundles: deb
+          - os: macos-14
+            target: aarch64-apple-darwin
+            label: app-macos-arm64
+            bundles: dmg
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Install the Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Build the CLI that ships inside the app
+        shell: bash
+        run: |
+          set -eu
+          cargo build --release
+          cp target/release/scribe "app/bin/scribe-${{ matrix.target }}"
+
+      - name: Bundle
+        shell: bash
+        working-directory: app
+        run: cargo tauri build --bundles ${{ matrix.bundles }} --config tauri.bundle.conf.json
+
+      - name: Package
+        shell: bash
+        run: |
+          set -eu
+          RAW="${{ github.event.inputs.tag || github.ref_name }}"
+          VER="${RAW#v}"
+          mkdir -p dist
+          if [ "${{ matrix.bundles }}" = deb ]; then
+            cp target/release/bundle/deb/*.deb "dist/scribe-app-${VER}-linux-amd64.deb"
+          else
+            cp target/release/bundle/dmg/*.dmg "dist/scribe-app-${VER}-macos-arm64.dmg"
+          fi
+          ( cd dist && for f in scribe-app-*; do shasum -a 256 "$f" > "$f.sha256"; done )
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}
+          path: dist/*
+
   publish:
     name: publish release
-    needs: build
+    needs: [build, app]
     if: ${{ always() }}   # publish with whatever platforms succeeded
     runs-on: ubuntu-latest
     steps:

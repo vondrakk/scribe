@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Scribe",
+  "identifier": "io.github.vondrakk.scribe",
+  "build": {
+    "frontendDist": "./ui"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "dmg", "app"],
+    "category": "DeveloperTool",
+    "shortDescription": "Turns your terminal work into Jira updates you review",
+    "longDescription": "Scribe passively captures terminal and git work on this machine, joins it with the chat context that explains it, and proposes Jira and Confluence updates that are only posted when you send them.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
