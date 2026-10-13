@@ -14,7 +14,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use crate::config;
+use crate::db;
 use crate::model::now_ts;
 
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -43,6 +43,29 @@ pub struct LogEntry {
     /// Whether it was pushed to Jira (vs local-only).
     #[serde(default)]
     pub pushed_jira: bool,
+    /// The write-up kept with a local-only entry; posted if it is pushed later.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub body: String,
+    /// Logged without asking, because its path is on the ignore list.
+    #[serde(default)]
+    pub silent: bool,
+    /// Work added by Scribe after the entry was made (same event, later).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub auto_ids: Vec<i64>,
+    /// What that added work was — kept as text so it outlives raw capture.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub addendum: String,
+    /// Time per day, kept for the same reason. An event can span days; the
+    /// log is always by day.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub by_day: Vec<crate::model::DaySecs>,
+}
+
+impl LogEntry {
+    /// The write-up plus whatever was added to the event afterwards.
+    pub fn text(&self) -> String {
+        [self.body.trim(), self.addendum.trim()].iter().filter(|s| !s.is_empty()).copied().collect::<Vec<_>>().join("\n\n")
+    }
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -51,27 +74,24 @@ pub struct Logbook {
     pub entries: Vec<LogEntry>,
 }
 
-fn path() -> std::path::PathBuf {
-    config::logbook_file()
-}
-
 pub fn load() -> Logbook {
-    std::fs::read_to_string(path())
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+    let entries: Vec<LogEntry> = db::all(db::LOG);
+    let top = entries.iter().map(|e| e.id).max().unwrap_or(0);
+    let mut lb = Logbook { seq: db::doc::<i64>("logbook_seq").max(top), entries };
+    lb.entries.sort_by_key(|e| e.id);
+    lb
 }
 
+/// Store the logbook, then bring the Markdown journal in line with it.
 fn save(lb: &Logbook) {
-    // Write-then-rename: the background inbox thread and the request thread can
-    // both touch the store.
-    if let Ok(s) = serde_json::to_string_pretty(lb) {
-        let final_path = path();
-        let tmp = final_path.with_extension("json.tmp");
-        if std::fs::write(&tmp, s).is_ok() {
-            let _ = std::fs::rename(&tmp, &final_path);
-        }
-    }
+    let rows: Vec<db::Row> = lb
+        .entries
+        .iter()
+        .filter_map(|e| Some((e.id, e.updated_ts, e.ticket.clone(), serde_json::to_string(e).ok()?)))
+        .collect();
+    db::replace(db::LOG, &rows);
+    db::put_doc("logbook_seq", &lb.seq);
+    crate::journal::sync();
 }
 
 /// Every episode id accounted for by the logbook — hidden from the Stream.
@@ -115,9 +135,63 @@ pub fn add(
         draft_id,
         secs,
         pushed_jira,
+        ..Default::default()
     });
     save(&lb);
     id
+}
+
+/// Store a logbook changed as a whole (and refresh the journal).
+pub fn store(lb: &Logbook) {
+    save(lb);
+}
+
+/// Re-point entries after episode ids changed; ids no longer known are dropped.
+pub fn remap_episodes(map: &std::collections::HashMap<i64, i64>) {
+    let mut lb = load();
+    if lb.entries.iter().all(|e| e.episode_ids.is_empty()) {
+        return;
+    }
+    for e in lb.entries.iter_mut() {
+        e.episode_ids = e.episode_ids.iter().filter_map(|id| map.get(id).copied()).collect();
+    }
+    save(&lb);
+}
+
+/// Fold entry `from` into `target` — more of the same event, sent later. The
+/// work, the time and the text move over; `from` goes away.
+pub fn absorb(target: i64, from: i64) -> bool {
+    let mut lb = load();
+    let Some(pos) = lb.entries.iter().position(|e| e.id == from) else { return false };
+    if target == from || !lb.entries.iter().any(|e| e.id == target) {
+        return false;
+    }
+    let add = lb.entries.remove(pos);
+    let Some(e) = lb.entries.iter_mut().find(|e| e.id == target) else { return false };
+    for id in add.episode_ids {
+        if !e.episode_ids.contains(&id) {
+            e.episode_ids.push(id);
+        }
+    }
+    e.secs += add.secs;
+    e.updated_ts = now_ts();
+    if !add.body.trim().is_empty() {
+        let more = add.body.replace("h3. What was done", "h3. Added later");
+        // One sign-off line is enough: the addition carries its own.
+        let was = e.body.replace("Captured by Scribe and reviewed before posting.", "");
+        e.body = [was.trim(), more.trim()].iter().filter(|s| !s.is_empty()).copied().collect::<Vec<_>>().join("\n\n");
+    }
+    save(&lb);
+    true
+}
+
+/// Keep a write-up with an entry.
+pub fn set_body(entry_id: i64, body: &str) {
+    let mut lb = load();
+    if let Some(e) = lb.entries.iter_mut().find(|e| e.id == entry_id) {
+        e.body = body.to_string();
+        save(&lb);
+    }
 }
 
 /// Append episode ids (deduped) to an existing entry; bumps its time snapshot.

@@ -41,9 +41,19 @@ impl AtlassianConn {
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
+pub struct PagerdutyConn {
+    /// Sent as the `From` header PagerDuty requires when acting on incidents.
+    pub email: String,
+    /// Personal REST API key (PagerDuty → My Profile → User Settings).
+    pub token: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(default)]
 pub struct Secrets {
     pub gitlab: Vec<GitlabConn>,
     pub atlassian: AtlassianConn,
+    pub pagerduty: PagerdutyConn,
 }
 
 pub fn secrets_file() -> PathBuf {
@@ -104,6 +114,10 @@ pub fn view() -> Value {
             "email": s.atlassian.email,
             "token_set": !s.atlassian.token.is_empty(),
         },
+        "pagerduty": {
+            "email": s.pagerduty.email,
+            "token_set": !s.pagerduty.token.is_empty(),
+        },
     })
 }
 
@@ -146,6 +160,19 @@ fn merge(old: &Secrets, v: &Value) -> Secrets {
             AtlassianConn { site, email: text(a, "email"), token }
         };
     }
+
+    if let Some(p) = v.get("pagerduty") {
+        // PagerDuty has one fixed address, so there is nothing to re-pin.
+        let mut token = text(p, "token");
+        if token.is_empty() {
+            token = old.pagerduty.token.clone();
+        }
+        out.pagerduty = if p.get("clear").and_then(|x| x.as_bool()).unwrap_or(false) {
+            PagerdutyConn::default()
+        } else {
+            PagerdutyConn { email: text(p, "email"), token }
+        };
+    }
     out
 }
 
@@ -177,7 +204,12 @@ pub fn test() -> Value {
     } else {
         outcome(crate::atlassian::whoami())
     };
-    json!({ "gitlab": gitlab, "atlassian": atlassian })
+    let pagerduty = if s.pagerduty.token.is_empty() {
+        Value::Null
+    } else {
+        outcome(crate::pagerduty::whoami())
+    };
+    json!({ "gitlab": gitlab, "atlassian": atlassian, "pagerduty": pagerduty })
 }
 
 #[cfg(test)]
@@ -195,6 +227,7 @@ mod tests {
                 email: "me@co.com".into(),
                 token: "t-atl".into(),
             },
+            pagerduty: PagerdutyConn { email: "me@co.com".into(), token: "t-pd".into() },
         }
     }
 

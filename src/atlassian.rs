@@ -421,11 +421,15 @@ pub fn add_comment(issue_key: &str, body_wiki: &str) -> Result<Posted, String> {
 
 /// Log work (real Jira worklog) against an issue: records time spent, with an
 /// optional comment. `secs` is clamped to Jira's 60s minimum.
-pub fn add_worklog(issue_key: &str, secs: f64, comment_wiki: &str) -> Result<Posted, String> {
+/// `started` dates the worklog (unix seconds); None means now.
+pub fn add_worklog(issue_key: &str, secs: f64, comment_wiki: &str, started: Option<f64>) -> Result<Posted, String> {
     let c = resolve_creds()?;
     let time_spent = (secs.round() as i64).max(60);
     // Jira wants the start time as e.g. 2026-10-06T12:00:00.000+0000.
-    let started = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3f%z").to_string();
+    let at = started
+        .and_then(|ts| chrono::DateTime::<chrono::Utc>::from_timestamp(ts as i64, 0))
+        .unwrap_or_else(chrono::Utc::now);
+    let started = at.format("%Y-%m-%dT%H:%M:%S%.3f%z").to_string();
     let mut body = json!({
         "timeSpentSeconds": time_spent,
         "started": started,
@@ -504,10 +508,170 @@ pub fn pull_assigned() -> Result<Vec<crate::inbox::InboxItem>, String> {
                 ticket: Some(key),
                 author: iss["fields"]["status"]["name"].as_str().map(String::from),
                 updated_ts: jira_date_to_ts(iss["fields"]["updated"].as_str().unwrap_or("")),
+                status: iss["fields"]["status"]["name"].as_str().unwrap_or("").to_string(),
+                ..Default::default()
             });
         }
     }
     Ok(out)
+}
+
+// --- one ticket, in depth ---------------------------------------------------
+
+/// Plain text of an ADF document (Jira's rich-text format), paragraphs kept.
+fn adf_text(v: &Value, out: &mut String) {
+    if let Some(t) = v["text"].as_str() {
+        out.push_str(t);
+    }
+    if v["type"].as_str() == Some("hardBreak") {
+        out.push('\n');
+    }
+    for child in v["content"].as_array().into_iter().flatten() {
+        adf_text(child, out);
+    }
+    if matches!(v["type"].as_str(), Some("paragraph" | "heading" | "listItem")) && !out.ends_with('\n') {
+        out.push('\n');
+    }
+}
+
+/// What the stream shows when a ticket is opened: its state, the moves
+/// available from here, and the latest comments.
+pub fn issue_detail(key: &str) -> Result<Value, String> {
+    let c = resolve_creds()?;
+    let v = get_json(
+        &format!("{}/issue/{key}?fields=summary,status,assignee,priority,comment,updated", c.jira_base),
+        &c.auth,
+    )?;
+    let f = &v["fields"];
+    let all = f["comment"]["comments"].as_array().cloned().unwrap_or_default();
+    let comments: Vec<Value> = all
+        .iter()
+        .rev()
+        .take(5)
+        .rev()
+        .map(|cm| {
+            let mut text = String::new();
+            adf_text(&cm["body"], &mut text);
+            json!({
+                "author": cm["author"]["displayName"].as_str().unwrap_or(""),
+                "ts": jira_date_to_ts(cm["created"].as_str().unwrap_or("")),
+                "text": text.trim(),
+            })
+        })
+        .collect();
+    let moves = get_json(&format!("{}/issue/{key}/transitions", c.jira_base), &c.auth)
+        .map(|t| {
+            t["transitions"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|x| json!({ "id": x["id"].as_str().unwrap_or(""), "name": x["name"].as_str().unwrap_or("") }))
+                .collect::<Vec<Value>>()
+        })
+        .unwrap_or_default();
+    Ok(json!({
+        "key": key,
+        "summary": f["summary"].as_str().unwrap_or(""),
+        "status": f["status"]["name"].as_str().unwrap_or(""),
+        "assignee": f["assignee"]["displayName"].as_str().unwrap_or("Unassigned"),
+        "priority": f["priority"]["name"].as_str().unwrap_or(""),
+        "url": format!("{}/browse/{key}", c.site_url.trim_end_matches('/')),
+        "comments": comments,
+        "comment_total": all.len(),
+        "transitions": moves,
+    }))
+}
+
+/// Move a ticket through its workflow (`id` from `issue_detail`'s transitions).
+pub fn transition(key: &str, id: &str) -> Result<(), String> {
+    let c = resolve_creds()?;
+    let body = json!({ "transition": { "id": id } });
+    post_json(&format!("{}/issue/{key}/transitions", c.jira_base), Some(&c.auth), &body).map(|_| ())
+}
+
+// --- Confluence: pages about the tickets in play ---------------------------
+
+/// Pages whose text mentions any of `keys`. Err("") when not authenticated.
+pub fn search_pages(keys: &[String]) -> Result<Vec<crate::inbox::InboxItem>, String> {
+    let c = match resolve_creds() {
+        Ok(c) => c,
+        Err(_) => return Err(String::new()),
+    };
+    // Keys come from our own ticket pattern; keep the query to what it expects.
+    let keys: Vec<&String> = keys
+        .iter()
+        .filter(|k| k.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '-'))
+        .take(20)
+        .collect();
+    if keys.is_empty() {
+        return Ok(Vec::new());
+    }
+    let terms: Vec<String> = keys.iter().map(|k| format!("text ~ \"{k}\"")).collect();
+    let cql = format!("type = page AND ({}) ORDER BY lastmodified DESC", terms.join(" OR "));
+    let base = c.conf_base.replace("/api/v2", "/rest/api");
+    let v = get_json(&format!("{base}/search?cql={}&limit=30", url_encode(&cql)), &c.auth)?;
+    let link_base = v["_links"]["base"].as_str().unwrap_or("").to_string();
+    let mut out = Vec::new();
+    for r in v["results"].as_array().into_iter().flatten() {
+        let clean = |s: &str| s.replace("@@@hl@@@", "").replace("@@@endhl@@@", "");
+        let title = clean(r["title"].as_str().unwrap_or(""));
+        let excerpt = clean(r["excerpt"].as_str().unwrap_or(""));
+        let hay = format!("{title} {excerpt}").to_uppercase();
+        // Only keep a page we can tie to a ticket by what the search showed us.
+        let Some(key) = keys.iter().find(|k| hay.contains(&k.to_uppercase())) else {
+            continue;
+        };
+        out.push(crate::inbox::InboxItem {
+            source: "confluence".into(),
+            kind: "page".into(),
+            title,
+            url: format!("{link_base}{}", r["url"].as_str().unwrap_or("")),
+            ticket: Some((*key).clone()),
+            author: r["resultGlobalContainer"]["title"].as_str().map(String::from),
+            updated_ts: jira_date_to_ts(r["lastModified"].as_str().unwrap_or("")),
+            ref_id: r["content"]["id"].as_str().unwrap_or("").to_string(),
+            detail: excerpt.split_whitespace().collect::<Vec<_>>().join(" "),
+            ..Default::default()
+        });
+    }
+    Ok(out)
+}
+
+/// Append to an existing page (a runbook, an incident log): the new text goes
+/// at the end as a new page version.
+pub fn append_page(page_id: &str, body_wiki: &str) -> Result<Posted, String> {
+    if page_id.is_empty() || !page_id.chars().all(|ch| ch.is_ascii_digit()) {
+        return Err("bad page id".into());
+    }
+    let c = resolve_creds()?;
+    let url = format!("{}/pages/{page_id}", c.conf_base);
+    let page = get_json(&format!("{url}?body-format=storage"), &c.auth)?;
+    let title = page["title"].as_str().ok_or("could not read the page")?;
+    let version = page["version"]["number"].as_i64().ok_or("could not read the page version")?;
+    let current = page["body"]["storage"]["value"].as_str().unwrap_or("");
+    let body = json!({
+        "id": page_id,
+        "status": "current",
+        "title": title,
+        "body": { "representation": "storage", "value": format!("{current}{}", to_storage(body_wiki)) },
+        "version": { "number": version + 1, "message": "Appended from Scribe" },
+    });
+    let v = match ureq::put(&url)
+        .set("content-type", "application/json")
+        .set("authorization", &c.auth)
+        .send_string(&body.to_string())
+    {
+        Ok(resp) => parse_body(resp)?,
+        Err(ureq::Error::Status(code, resp)) => {
+            return Err(format!("HTTP {code}: {}", resp.into_string().unwrap_or_default()))
+        }
+        Err(e) => return Err(format!("request failed: {e}")),
+    };
+    let base = v["_links"]["base"].as_str().unwrap_or(c.site_url.trim_end_matches('/'));
+    Ok(Posted {
+        reference: title.to_string(),
+        url: format!("{base}{}", v["_links"]["webui"].as_str().unwrap_or("")),
+    })
 }
 
 // --- format conversion: Jira wiki-ish markup -> ADF / storage --------------

@@ -274,6 +274,7 @@ pub fn compose(ids: &[String], kind: &str, title: &str, ticket: &str) -> Result<
         status: "draft".into(),
         composed: true,
         dur_secs: worklog_secs,
+        days: Vec::new(),
     });
     model::save_drafts(&drafts);
 
@@ -381,6 +382,23 @@ pub fn secs_for_ids(ids: &[i64]) -> f64 {
         .filter_map(|id| eps.iter().find(|e| e.id == *id))
         .map(|e| ov.get(&e.id).copied().unwrap_or_else(|| (e.end_ts - e.start_ts).max(0.0)))
         .sum()
+}
+
+/// The same time, split by the local day each piece of work started on.
+pub fn days_for_ids(ids: &[i64]) -> Vec<model::DaySecs> {
+    use chrono::TimeZone;
+    let eps = model::load_episodes();
+    let ov = crate::timeadj::load();
+    let mut by_day: std::collections::BTreeMap<String, f64> = std::collections::BTreeMap::new();
+    for e in ids.iter().filter_map(|id| eps.iter().find(|e| e.id == *id)) {
+        let day = chrono::Local
+            .timestamp_opt(e.start_ts as i64, 0)
+            .single()
+            .map(|t| t.format("%Y-%m-%d").to_string())
+            .unwrap_or_default();
+        *by_day.entry(day).or_default() += ov.get(&e.id).copied().unwrap_or_else(|| (e.end_ts - e.start_ts).max(0.0));
+    }
+    by_day.into_iter().map(|(day, secs)| model::DaySecs { day, secs }).collect()
 }
 
 /// Dispose of selected work items — mark them handled (dismissed) so they leave

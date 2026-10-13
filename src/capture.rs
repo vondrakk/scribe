@@ -118,35 +118,11 @@ pub fn count_events() -> usize {
     model::read_events().len()
 }
 
-/// Drop raw events older than the retention window; rewrite the log in place.
+/// Drop raw events older than the retention window.
 pub fn sweep_retention() -> usize {
     let days = config::load().retention_days as f64;
     let cutoff = model::now_ts() - days * 86400.0;
     crate::context::sweep(cutoff);
-    let log = config::events_log();
-    let mut kept: Vec<String> = Vec::new();
-    let mut dropped = 0usize;
-    if let Ok(s) = std::fs::read_to_string(&log) {
-        for line in s.lines() {
-            let line = line.trim();
-            if line.is_empty() {
-                continue;
-            }
-            let ts = serde_json::from_str::<Event>(line).map(|e| e.ts).unwrap_or(0.0);
-            if ts >= cutoff {
-                kept.push(line.to_string());
-            } else {
-                dropped += 1;
-            }
-        }
-        let mut body = kept.join("\n");
-        if !kept.is_empty() {
-            body.push('\n');
-        }
-        let tmp = log.with_extension("jsonl.tmp");
-        if std::fs::write(&tmp, body).is_ok() {
-            let _ = std::fs::rename(&tmp, &log);
-        }
-    }
-    dropped
+    crate::db::delete_before(crate::db::PROMPTS, cutoff);
+    crate::db::delete_before(crate::db::EVENTS, cutoff)
 }

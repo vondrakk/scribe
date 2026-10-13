@@ -6,7 +6,6 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::config;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Rule {
@@ -15,21 +14,12 @@ pub struct Rule {
     pub tag: String,
 }
 
-fn path() -> std::path::PathBuf {
-    config::home().join("rules.json")
-}
-
 pub fn load() -> Vec<Rule> {
-    std::fs::read_to_string(path())
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+    crate::db::doc("rules")
 }
 
 pub fn save(rules: &[Rule]) {
-    if let Ok(s) = serde_json::to_string_pretty(rules) {
-        let _ = std::fs::write(path(), s);
-    }
+    crate::db::put_doc("rules", rules);
 }
 
 pub fn add(prefix: &str, tag: &str) {

@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::binding;
 use crate::capture;
-use crate::config;
 use crate::model::{self, now_ts, Event};
 
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -40,10 +39,6 @@ fn sanitize(session: &str) -> String {
         .collect();
     let s = s.trim_matches('_').to_string();
     if s.is_empty() { "default".to_string() } else { s }
-}
-
-fn session_file(session: &str) -> std::path::PathBuf {
-    config::prompts_dir().join(format!("{}.jsonl", sanitize(session)))
 }
 
 fn preview(text: &str, n: usize) -> String {
@@ -81,17 +76,7 @@ pub fn record(session: &str, tool: &str, model: Option<&str>, prompt: &str) {
         ticket: ticket.clone(),
     };
 
-    if let Ok(mut line) = serde_json::to_string(&entry) {
-        line.push('\n');
-        use std::io::Write;
-        if let Ok(mut fh) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(session_file(session))
-        {
-            let _ = fh.write_all(line.as_bytes());
-        }
-    }
+    crate::db::append(crate::db::PROMPTS, entry.ts, &entry.session, &entry);
 
     // Compact timeline marker (no full prompt text).
     let label = match model {
@@ -118,51 +103,25 @@ pub struct SessionPrompts {
     pub entries: Vec<Prompt>,
 }
 
-fn read_file(path: &std::path::Path) -> Vec<Prompt> {
-    let mut out = Vec::new();
-    if let Ok(s) = std::fs::read_to_string(path) {
-        for line in s.lines() {
-            if line.trim().is_empty() {
-                continue;
-            }
-            if let Ok(p) = serde_json::from_str::<Prompt>(line) {
-                out.push(p);
-            }
-        }
-    }
-    out
-}
-
 /// All sessions with their prompts, newest session first.
 pub fn all_sessions() -> Vec<SessionPrompts> {
-    let mut sessions: Vec<SessionPrompts> = Vec::new();
-    if let Ok(rd) = std::fs::read_dir(config::prompts_dir()) {
-        for ent in rd.flatten() {
-            let path = ent.path();
-            if path.extension().and_then(|e| e.to_str()) != Some("jsonl") {
-                continue;
-            }
-            let entries = read_file(&path);
-            if entries.is_empty() {
-                continue;
-            }
-            let session = path
-                .file_stem()
-                .map(|s| s.to_string_lossy().to_string())
-                .unwrap_or_default();
-            let last = entries.iter().map(|p| p.ts).fold(0.0, f64::max);
-            sessions.push(SessionPrompts {
-                session,
-                count: entries.len(),
-                last,
-                entries,
-            });
-        }
+    let mut by_session: std::collections::BTreeMap<String, Vec<Prompt>> = std::collections::BTreeMap::new();
+    for p in crate::db::all::<Prompt>(crate::db::PROMPTS) {
+        by_session.entry(p.session.clone()).or_default().push(p);
     }
+    let mut sessions: Vec<SessionPrompts> = by_session
+        .into_iter()
+        .map(|(session, entries)| SessionPrompts {
+            session,
+            count: entries.len(),
+            last: entries.iter().map(|p| p.ts).fold(0.0, f64::max),
+            entries,
+        })
+        .collect();
     sessions.sort_by(|a, b| b.last.partial_cmp(&a.last).unwrap_or(std::cmp::Ordering::Equal));
     sessions
 }
 
 pub fn total_count() -> usize {
-    all_sessions().iter().map(|s| s.count).sum()
+    crate::db::count(crate::db::PROMPTS)
 }

@@ -265,8 +265,11 @@ pub fn process() -> ProcessResult {
             .filter_map(|e| e.msg.clone())
             .find(|m| m != binding::DEFAULT_INTERRUPT_MSG);
         ep_id += 1;
+        // An episode is known by its first event's database row, so its id
+        // survives older capture being swept away.
+        let stable = grp.first().map(|e| e.row).filter(|r| *r > 0).unwrap_or(ep_id);
         let ep = Episode {
-            id: ep_id,
+            id: stable,
             start_ts: grp.first().map(|e| e.ts).unwrap_or(0.0),
             end_ts: grp.last().map(|e| e.ts).unwrap_or(0.0),
             repo: repos.into_iter().next(),
@@ -285,8 +288,18 @@ pub fn process() -> ProcessResult {
         built.push((ep, grp));
     }
     model::save_episodes(&episodes);
+    // Once: episodes used to be numbered by position. Point what refers to
+    // them (the logbook, time corrections) at the stable ids instead.
+    if !crate::db::doc::<bool>("stable_episode_ids") {
+        let map: std::collections::HashMap<i64, i64> =
+            episodes.iter().enumerate().map(|(i, e)| (i as i64 + 1, e.id)).collect();
+        crate::logbook::remap_episodes(&map);
+        crate::timeadj::remap(&map);
+        crate::db::put_doc("stable_episode_ids", &true);
+    }
 
     let n_drafts = drafts::rebuild(&built, &episodes);
+    crate::review::settle();
     ProcessResult {
         episodes: episodes.len(),
         drafts: n_drafts,

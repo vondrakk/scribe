@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::binding;
 use crate::config;
+use crate::db;
 use crate::model::now_ts;
 
 /// Stored text is capped: a clip is a thread, not an archive.
@@ -53,9 +54,15 @@ pub struct ContextItem {
     /// Already sent with (or dismissed from) a card — hidden from review.
     #[serde(default)]
     pub used: bool,
+    /// The review card the engineer filed this under, when it isn't a ticket's.
+    #[serde(default)]
+    pub pin: String,
+    /// Filed by hand, so it is trusted like a clip and goes into the update.
+    #[serde(default)]
+    pub filed: bool,
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Default)]
 struct Store {
     seq: i64,
     items: Vec<ContextItem>,
@@ -64,25 +71,21 @@ struct Store {
 // The listener thread and the request thread both write the store.
 static LOCK: Mutex<()> = Mutex::new(());
 
-fn path() -> std::path::PathBuf {
-    config::home().join("context.json")
-}
-
 fn load_store() -> Store {
-    std::fs::read_to_string(path())
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+    let items: Vec<ContextItem> = db::all(db::CONTEXT);
+    let top = items.iter().map(|i| i.id).max().unwrap_or(0);
+    // The counter outlives swept items, so ids are never reused.
+    Store { seq: db::doc::<i64>("context_seq").max(top), items }
 }
 
 fn save_store(st: &Store) {
-    if let Ok(s) = serde_json::to_string_pretty(st) {
-        let final_path = path();
-        let tmp = final_path.with_extension("json.tmp");
-        if std::fs::write(&tmp, s).is_ok() {
-            let _ = std::fs::rename(&tmp, &final_path);
-        }
-    }
+    let rows: Vec<db::Row> = st
+        .items
+        .iter()
+        .filter_map(|i| Some((i.id, i.ts, i.ticket.clone(), serde_json::to_string(i).ok()?)))
+        .collect();
+    db::replace(db::CONTEXT, &rows);
+    db::put_doc("context_seq", &st.seq);
 }
 
 pub fn load() -> Vec<ContextItem> {
@@ -115,6 +118,27 @@ pub fn mark_used(ids: &[i64]) {
         }
     }
     save_store(&st);
+}
+
+/// File an item under a ticket, or under one review card (`pin`), overriding
+/// where time and mentions would have put it. Brings a dismissed item back.
+pub fn assign(id: i64, ticket: &str, pin: &str) -> Result<(), String> {
+    let ticket = match ticket.trim() {
+        "" => String::new(),
+        t => binding::extract_key(Some(t)).ok_or_else(|| format!("{t} doesn't look like a ticket key"))?,
+    };
+    if ticket.is_empty() && pin.trim().is_empty() {
+        return Err("choose where it belongs".into());
+    }
+    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut st = load_store();
+    let it = st.items.iter_mut().find(|i| i.id == id).ok_or("that message is no longer kept")?;
+    it.ticket = ticket;
+    it.pin = pin.trim().to_string();
+    it.filed = true;
+    it.used = false;
+    save_store(&st);
+    Ok(())
 }
 
 /// Drop items older than `cutoff` (same retention window as raw capture).

@@ -34,7 +34,7 @@ fn rfc3339_to_ts(s: &str) -> f64 {
         .unwrap_or(0.0)
 }
 
-fn mr_to_item(v: &Value, reviewing: bool) -> InboxItem {
+fn mr_to_item(v: &Value, reviewing: bool, host: &str) -> InboxItem {
     let title = v["title"].as_str().unwrap_or("").to_string();
     let reference = v["references"]["full"].as_str().unwrap_or("").to_string();
     let branch = v["source_branch"].as_str().unwrap_or("");
@@ -48,6 +48,15 @@ fn mr_to_item(v: &Value, reviewing: bool) -> InboxItem {
         ticket,
         author: v["author"]["name"].as_str().map(String::from),
         updated_ts: rfc3339_to_ts(v["updated_at"].as_str().unwrap_or("")),
+        status: if v["draft"].as_bool().unwrap_or(false) { "draft".into() } else { "open".into() },
+        ref_id: format!("{}!{}", v["project_id"].as_i64().unwrap_or(0), v["iid"].as_i64().unwrap_or(0)),
+        host: host.to_string(),
+        detail: format!(
+            "{} → {}{}",
+            branch,
+            v["target_branch"].as_str().unwrap_or("?"),
+            if v["has_conflicts"].as_bool().unwrap_or(false) { " · has conflicts" } else { "" }
+        ),
     }
 }
 
@@ -81,6 +90,53 @@ pub fn whoami(base: &str, token: &str) -> Result<String, String> {
         .as_str()
         .map(|u| format!("signed in as {u}"))
         .ok_or_else(|| "unexpected reply from GitLab".to_string())
+}
+
+fn post(url: &str, token: &str, body: &Value) -> Result<Value, String> {
+    match ureq::post(url)
+        .set("PRIVATE-TOKEN", token)
+        .set("content-type", "application/json")
+        .send_string(&body.to_string())
+    {
+        Ok(resp) => {
+            let txt = resp.into_string().map_err(|e| format!("read body: {e}"))?;
+            Ok(serde_json::from_str(&txt).unwrap_or(Value::Null))
+        }
+        Err(ureq::Error::Status(403, _)) => {
+            Err("GitLab refused (403) — the token needs the `api` scope to comment or approve".into())
+        }
+        Err(ureq::Error::Status(code, resp)) => {
+            Err(format!("HTTP {code}: {}", resp.into_string().unwrap_or_default()))
+        }
+        Err(e) => Err(format!("request failed: {e}")),
+    }
+}
+
+/// The API path of a merge request on a connected instance, with its token.
+/// `host` must be one of the configured instances — a token is never sent
+/// anywhere else — and `ref_id` is `<project id>!<iid>`.
+fn mr_endpoint(host: &str, ref_id: &str) -> Result<(String, String), String> {
+    let host = host.trim_end_matches('/');
+    let token = connections()
+        .into_iter()
+        .find(|c| c.1.trim_end_matches('/') == host)
+        .map(|c| c.2)
+        .ok_or_else(|| format!("{host} is not a connected GitLab"))?;
+    let (project, iid) = ref_id.split_once('!').ok_or("bad merge request reference")?;
+    if project.parse::<u64>().is_err() || iid.parse::<u64>().is_err() {
+        return Err("bad merge request reference".into());
+    }
+    Ok((format!("{host}/api/v4/projects/{project}/merge_requests/{iid}"), token))
+}
+
+pub fn comment(host: &str, ref_id: &str, body: &str) -> Result<(), String> {
+    let (url, token) = mr_endpoint(host, ref_id)?;
+    post(&format!("{url}/notes"), &token, &serde_json::json!({ "body": body })).map(|_| ())
+}
+
+pub fn approve(host: &str, ref_id: &str) -> Result<(), String> {
+    let (url, token) = mr_endpoint(host, ref_id)?;
+    post(&format!("{url}/approve"), &token, &serde_json::json!({})).map(|_| ())
 }
 
 /// Fetch open MRs assigned to me and awaiting my review, from every instance.
@@ -117,7 +173,7 @@ fn fetch_one(base: &str, token: &str) -> Result<Vec<InboxItem>, String> {
     )?;
     if let Some(arr) = assigned.as_array() {
         for mr in arr {
-            let it = mr_to_item(mr, false);
+            let it = mr_to_item(mr, false, base);
             if seen.insert(it.url.clone()) {
                 items.push(it);
             }
@@ -133,7 +189,7 @@ fn fetch_one(base: &str, token: &str) -> Result<Vec<InboxItem>, String> {
             ) {
                 if let Some(arr) = rev.as_array() {
                     for mr in arr {
-                        let it = mr_to_item(mr, true);
+                        let it = mr_to_item(mr, true, base);
                         if seen.insert(it.url.clone()) {
                             items.push(it);
                         }

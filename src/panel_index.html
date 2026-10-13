@@ -242,6 +242,7 @@ main.narrow{max-width:860px;margin:0 auto}
 .rctx.off{border-style:dashed;color:var(--mut)}
 .rctx .rtext{flex:1;min-width:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .rctx .btn{padding:2px 9px;font-size:12px;flex:none}
+.rctx select,.rctx input[type=text]{flex:none;font-size:12px;padding:2px 6px;max-width:170px}
 .rbody{font-size:13.5px;line-height:1.55;background:var(--input);border:1px solid var(--line);border-radius:8px;padding:10px 14px;overflow-wrap:anywhere}
 .rbody .rbh{font-weight:600;margin:8px 0 2px} .rbody .rbh:first-child{margin-top:0}
 .rbody ul{margin:2px 0 6px;padding-left:20px} .rbody p{margin:6px 0 0;color:var(--mut)} .rbody a{color:var(--accent)}
@@ -255,9 +256,73 @@ main.narrow{max-width:860px;margin:0 auto}
 .connrow .connres{grid-column:1/-1;font-size:12px;margin-top:4px;min-height:4px}
 @media(max-width:720px){.connrow{grid-template-columns:1fr}}
 .rprompt{font-size:12.5px;white-space:pre-wrap;padding:6px 0;border-bottom:1px solid var(--line)}
+.ditem{border:1px solid var(--line);border-radius:10px;margin:8px 0;background:var(--card);overflow:hidden}
+.ditem.open{border-color:var(--accent)}
+.drow{display:flex;gap:10px;align-items:center;padding:11px 14px;cursor:pointer;flex-wrap:wrap}
+.drow:hover{background:var(--chip)}
+.ddot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+.ditem.need .ddot{background:var(--accent)}
+.ditem.hot .ddot{background:var(--bad)}
+.dtitle{font-weight:600;font-size:14px}
+.ditem.quiet .dtitle{font-weight:500}
+.dneeds{font-size:12.5px;color:var(--accent)}
+.ditem.hot .dneeds{color:var(--bad);font-weight:600}
+.dwhen{font-size:12px;min-width:56px;text-align:right}
+.dsrc{font-size:11px;padding:2px 7px;border-radius:999px;background:var(--chip);color:var(--mut);white-space:nowrap}
+.dbody{padding:2px 14px 12px;border-top:1px solid var(--line)}
+.dbody .rcard{margin:12px 0 0}
+.dsec{padding:11px 0;border-bottom:1px solid var(--line)}
+.dsec:last-child{border-bottom:0}
+.dsech{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px}
+.dsech a{color:var(--fg);font-weight:600;text-decoration:none}
+.dsech a:hover{text-decoration:underline}
+.dact{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.dact:empty{display:none}
+.dsay{display:flex;gap:8px;margin-top:8px}
+.dsay input{flex:1;min-width:0}
+.dnote{font-size:12.5px;margin-top:6px}
+.dcomments{margin-top:8px;font-size:12.5px}
+.dcomment{padding:6px 0 6px 10px;border-left:2px solid var(--line);margin-top:6px;white-space:pre-wrap}
+.dok{font-size:12.5px;color:var(--ok);padding-top:10px}
+.dok a{margin-left:4px}
 .rsent{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 14px;border:1px solid var(--ok-bd);background:var(--ok-bg);border-radius:10px;margin:8px 0;font-size:13px}
 .rsent code{background:var(--input);padding:2px 7px;border-radius:5px;color:var(--fg);overflow-wrap:anywhere}
 .rmock{padding:8px 12px;border:1px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn);border-radius:8px;font-size:12.5px;margin-bottom:10px}
+body.fit{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body.fit main{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 20px 14px}
+.dtop{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.dtop h2{font-size:17px;margin:0 6px 0 0;font-weight:600}
+.dsplit{flex:1;min-height:0;display:grid;grid-template-columns:minmax(250px,340px) 1fr;gap:12px}
+.dlist,.dpane{border:1px solid var(--line);border-radius:10px;background:var(--panel);min-height:0}
+.dlist{overflow-y:auto}
+.drow2{display:flex;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);border-left:3px solid transparent;cursor:pointer}
+.drow2:hover{background:var(--chip)}
+.drow2.on{background:var(--chip);border-left-color:var(--accent)}
+.drow2.need .ddot{background:var(--accent)} .drow2.hot .ddot{background:var(--bad)}
+.drow2.quiet .dtitle{font-weight:500}
+.dmain{flex:1;min-width:0}
+.dl1{display:flex;gap:7px;align-items:baseline;white-space:nowrap;overflow:hidden}
+.dl1 .dtitle{overflow:hidden;text-overflow:ellipsis}
+.dl2{font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drow2.need .dl2{color:var(--accent)} .drow2.hot .dl2{color:var(--bad);font-weight:600}
+.dpane{display:flex;flex-direction:column;overflow:hidden}
+.dphead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding:12px 16px 0}
+.dphead .dtitle{font-size:15px} .dneeds.hot{color:var(--bad);font-weight:600}
+.dtabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--line);overflow-x:auto}
+.dtabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--mut);padding:6px 10px;cursor:pointer;font:inherit;white-space:nowrap}
+.dtabs button.on{color:var(--fg);border-bottom-color:var(--accent)}
+.dpbody{flex:1;min-height:0;overflow-y:auto;padding:2px 16px 14px}
+.dpbody .rcard{border:0;border-radius:0;background:none;padding:12px 0;margin:0;border-bottom:1px solid var(--line)}
+.dpbody .rcard:last-child{border-bottom:0}
+.dpbody .rbody{max-height:32vh;overflow-y:auto}
+.dpbody textarea{min-height:30vh}
+.dover{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;justify-content:center;align-items:center}
+.dover.side{justify-content:flex-end;align-items:stretch}
+.dmodal{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;width:min(640px,92vw);max-height:84vh;overflow-y:auto;box-shadow:0 12px 48px rgba(0,0,0,.4)}
+.dover.side .dmodal{border-radius:0;border-width:0 0 0 1px;width:min(540px,94vw);max-height:none}
+.dtoasts{position:fixed;right:18px;bottom:16px;z-index:40;display:flex;flex-direction:column;gap:8px;max-width:min(600px,92vw)}
+.dtoasts .rsent{margin:0;background:var(--panel);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+@media(max-width:820px){.dsplit{grid-template-columns:1fr;grid-template-rows:minmax(110px,30%) 1fr}}
 .rdone{text-align:center;padding:48px 20px;color:var(--mut)}
 .rdone b{display:block;font-size:17px;color:var(--fg);margin-bottom:4px}
 .xterm{height:100%}
@@ -299,11 +364,12 @@ main.narrow{max-width:860px;margin:0 auto}
 <script>
 // Three screens matter day to day; the rest (the manual builder, the workbench
 // and the pipeline's internals) stay reachable under "More".
-const TABS=["Review","Logged","Settings"];
-const MORE=["Stream","Drafts","Unaccounted","Episodes","Timeline","Prompts","Terminal","Ansible","Scratchpad"];
-const LABEL={Logged:"History",Stream:"Manual builder"};
+// "Desk" is the stream: one row per piece of work, across every system.
+const TABS=["Desk","Logged","Settings"];
+const MORE=["Stream","Drafts","Unaccounted","Episodes","Timeline","Prompts","Terminal","Ansible"];
+const LABEL={Desk:"Stream",Logged:"History",Stream:"Manual builder"};
 let moreOpen=false; try{moreOpen=localStorage.getItem('scribe-more')==='1';}catch(e){}
-let state={}, cur="Review", pickerOpen=false, intOpen=false, streamSel=new Set();
+let state={}, cur="Desk", pickerOpen=false, intOpen=false, streamSel=new Set();
 const fmt=t=>new Date(t*1000).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
 const esc=s=>(s||"").replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 async function api(u,opt){const r=await fetch(u,opt);return r.json();}
@@ -311,7 +377,7 @@ async function refresh(){state=await api('/api/state');draw();}
 // Something is mid-interaction (editing a draft, or the bind picker is open) —
 // used to suppress destructive live reloads.
 function busy(){const a=document.activeElement;
-  return pickerOpen || intOpen || !!document.querySelector('textarea') || (cur==='Settings' && !!a && a.tagName==='INPUT');}
+  return pickerOpen || intOpen || !!document.querySelector('textarea') || ((cur==='Settings'||cur==='Desk') && !!a && (a.tagName==='SELECT' || (a.tagName==='INPUT' && a.type!=='checkbox')));}
 function drawNav(){
   const n=document.getElementById('nav');n.innerHTML='';
   const add=(t,showCount)=>{const b=document.createElement('button');b.textContent=LABEL[t]||t;
@@ -319,15 +385,16 @@ function drawNav(){
     const c=showCount&&state.counts&&state.counts[t.toLowerCase()];
     if(c)b.innerHTML+=`<span class="count">${c}</span>`;
     b.onclick=()=>{cur=t;load();};n.appendChild(b);};
-  TABS.forEach(t=>add(t,t==='Review'));
+  TABS.forEach(t=>add(t,t==='Desk'));
   const open=moreOpen||MORE.includes(cur);
   const sep=document.createElement('span');sep.className='navsep';n.appendChild(sep);
   if(open)MORE.forEach(t=>add(t,false));
   const mb=document.createElement('button');mb.className='more';mb.id='morebtn';mb.textContent=open?'Less ‹':'More ›';
   mb.onclick=()=>{moreOpen=!open; try{localStorage.setItem('scribe-more',moreOpen?'1':'0');}catch(e){}
-    if(!moreOpen&&MORE.includes(cur))cur='Review'; load();};
+    if(!moreOpen&&MORE.includes(cur))cur='Desk'; load();};
   n.appendChild(mb);
-  document.getElementById('main').className=(cur==='Review'||cur==='Logged'||cur==='Settings')?'narrow':'';
+  document.getElementById('main').className=(cur==='Logged'||cur==='Settings')?'narrow':'';
+  document.body.classList.toggle('fit',cur==='Desk');
 }
 function drawBar(){
   const bd=state.binding, live=state.capture_live;
@@ -375,8 +442,10 @@ async function doInterrupt(){
   intOpen=false; await refresh();
 }
 async function load(){
-  drawNav();const m=document.getElementById('main');m.innerHTML='<div class="empty">Loading…</div>';
-  if(cur==="Review")return renderReview(m);
+  drawNav();const m=document.getElementById('main');
+  // The Stream redraws in place, so it keeps its scroll positions.
+  if(!(cur==='Desk'&&document.getElementById('dlist')))m.innerHTML='<div class="empty">Loading…</div>';
+  if(cur==="Desk")return renderDesk(m);
   if(cur==="Timeline")return renderTimeline(m);
   if(cur==="Episodes")return renderEpisodes(m,false);
   if(cur==="Unaccounted")return renderEpisodes(m,true);
@@ -386,7 +455,6 @@ async function load(){
   if(cur==="Logged")return renderLogged(m);
   if(cur==="Terminal")return renderTerminal(m);
   if(cur==="Ansible")return renderAnsible(m);
-  if(cur==="Scratchpad")return renderScratchpad(m);
   if(cur==="Settings")return renderSettings(m);
 }
 async function renderTimeline(m){
@@ -472,7 +540,7 @@ function dayLabel(ts){
 }
 // ---- Review: Scribe proposes one update per piece of work; you send, edit or skip ----
 // Per-card UI state is keyed by card id so a live reload never loses typing.
-let rvList=[], rvHandoff=null, rvText={}, rvVals={}, rvEdit=new Set(), rvOpen=new Set(), rvErr={}, rvSent=[], rvClip=false, rvHand=false;
+let rvList=[], rvHandoff=null, rvText={}, rvVals={}, rvEdit=new Set(), rvOpen=new Set(), rvErr={}, rvSent=[];
 // Show the update the way Jira will: headings and bullets, not markup.
 function rvRender(body){
   let h='', inList=false; const close=()=>{ if(inList){h+='</ul>';inList=false;} };
@@ -491,46 +559,268 @@ function rvVal(c,k,dflt){ const v=(rvVals[c.id]||{})[k]; return v!==undefined?v:
 function rvSet(i,k,v){ const c=rvList[i]; if(!c)return; (rvVals[c.id]=rvVals[c.id]||{})[k]=v; }
 function rvWhen(c){
   const day=dayLabel(c.end_ts), t=x=>new Date(x*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  return c.kind==='thread'?`${day} ${t(c.end_ts)}`:`${day} ${t(c.start_ts)}–${t(c.end_ts)}`;
+  if(c.kind==='thread')return `${day} ${t(c.end_ts)}`;
+  const from=dayLabel(c.start_ts);
+  return from===day?`${day} ${t(c.start_ts)}–${t(c.end_ts)}`:`${from} ${t(c.start_ts)} – ${day} ${t(c.end_ts)}`;
 }
-async function renderReview(m){
-  const d=await api('/api/review'); rvList=d.cards||[]; rvHandoff=d.handoff||null;
-  const mock=(state.config||{}).publish_backend!=='atlassian';
+// ---- The stream ("Desk"): one row per piece of work, across every system ----
+let dkItems=[], dkJira={}, dkMsg={}, dkBusy='';
+const DK_SRC={jira:'Jira',gitlab:'GitLab',pagerduty:'PagerDuty',confluence:'Confluence',chat:'Chat',work:'Your work'};
+const DK_DONE={'jira/comment':'Comment posted to Jira','jira/transition':'Ticket moved','gitlab/comment':'Comment posted to GitLab',
+  'gitlab/approve':'Merge request approved','pagerduty/ack':'Incident acknowledged','pagerduty/resolve':'Incident resolved',
+  'pagerduty/note':'Note added to the incident','confluence/append':'Page updated'};
+// Resolving closes the incident for everyone, so it takes a second click.
+let dkConfirm='';
+function dkResolve(i,j){ const id=dkItems[i].id+':'+j;
+  if(dkConfirm!==id){ dkConfirm=id; load(); return; }
+  dkConfirm=''; dkDo('pagerduty/resolve',i,'incidents',j); }
+// The ticket in depth is fetched once per open row, then kept until an action changes it.
+function dkLoadJira(key){
+  if(!key||dkJira[key]||!state.atlassian_authed)return;
+  dkJira[key]={loading:true};
+  api('/api/desk/jira?key='+encodeURIComponent(key)).then(d=>{dkJira[key]=d; if(cur==='Desk'&&!busy())load();})
+    .catch(()=>{dkJira[key]={error:'could not reach Jira'};});
+}
+async function dkRefresh(){
+  dkBusy='Checking Jira, GitLab, PagerDuty and Confluence…'; load();
+  const r=await api('/api/inbox/refresh',{method:'POST'});
+  dkBusy=(r.errors||[]).length?('Some sources failed: '+r.errors.join(' · ')):'';
+  dkJira={}; await refresh(); load();
+}
+// Act on another system. `coll`/`j` pick the thing on the item; `inputId` supplies typed text.
+async function dkDo(what,i,coll,j,inputId,extra){
+  const it=dkItems[i]; if(!it)return;
+  const x=coll==='jira'?(it.jira||{}):((it[coll]||[])[j]||{});
+  const p=Object.assign({key:it.key||'',host:x.host||'',ref_id:x.ref_id||'',title:x.title||''},extra||{});
+  if(inputId){ const el=document.getElementById(inputId); p.body=el?el.value:''; }
+  const r=await api('/api/desk/act/'+what,{method:'POST',body:JSON.stringify(p)});
+  if(r.error){ dkMsg[it.id]={ok:false,text:r.error}; load(); return; }
+  dkMsg[it.id]={ok:true,text:(DK_DONE[what]||'Done')+(r.url?' — ':''),url:r.url||''};
+  if(it.key)delete dkJira[it.key];
+  if(inputId){ const el=document.getElementById(inputId); if(el){el.value='';el.blur();} }
+  // Incidents and merge requests change state: re-read the sources so the row is current.
+  if(what.startsWith('pagerduty/')||what==='gitlab/approve'||what==='jira/transition')await api('/api/inbox/refresh',{method:'POST'});
+  await refresh(); load();
+}
+// Where a chat message can be filed: any row with a ticket, or with captured work.
+function dkTargets(){
+  return dkItems.map(it=>it.key?{v:'t:'+it.key,label:it.key+(it.title&&it.title!==it.key?' — '+it.title:'')}
+    :((it.cards||[]).find(c=>c.kind!=='thread')?{v:'p:'+it.cards.find(c=>c.kind!=='thread').id,label:it.title}:null)).filter(Boolean);
+}
+let dkOther=null, dkFileErr={};
+function dkMove(id,label){
+  if(dkOther===id)return `<input type="text" id="dkother-${id}" placeholder="ticket key" style="width:96px" onkeydown="if(event.key==='Enter')dkFile(${id},'t:'+this.value)">
+    <button class="btn" onclick="dkFile(${id},'t:'+document.getElementById('dkother-${id}').value)">File</button>`;
+  return `<select class="dmove" onchange="dkFile(${id},this.value)"><option value="">${label}</option>`
+    +dkTargets().map(t=>`<option value="${esc(t.v)}">${esc(t.label.slice(0,60))}</option>`).join('')
+    +`<option value="other">Another ticket…</option></select>`;
+}
+async function dkFile(id,v){
+  if(!v)return;
+  if(v==='other'){ dkOther=id; load(); return; }
+  const body=v.startsWith('t:')?{id,ticket:v.slice(2)}:{id,pin:v.slice(2)};
+  const r=await api('/api/context/assign',{method:'POST',body:JSON.stringify(body)});
+  if(!r.ok){ dkFileErr[id]=r.error||'could not file it'; load(); return; }
+  dkOther=null; delete dkFileErr[id];
+  // The updates it left and joined are rebuilt, so drop any edits made to them.
+  rvList.filter(c=>(c.context||[]).some(x=>x.id===id)||c.id===body.pin||(body.ticket&&c.ticket===body.ticket)).forEach(c=>{ delete rvText[c.id]; });
+  await refresh(); load();
+}
+function dkChatRow(c,label){
+  return `<div class="rctx off"><span class="rtext">${esc(c.text)} <span class="mut">· ${relTime(c.ts)}</span>${dkFileErr[c.id]?` <span class="rerr">${esc(dkFileErr[c.id])}</span>`:''}</span>
+    ${dkMove(c.id,label)}<button class="btn" onclick="dkDismissChat(${c.id})">Dismiss</button></div>`;
+}
+async function dkDismissChat(id){
+  await api('/api/review/skip',{method:'POST',body:JSON.stringify({episode_ids:[],context_ids:[id]})});
+  await refresh(); load();
+}
+function dkSay(i,coll,j,what,label,ph){
+  const id=`dk-${i}-${coll}-${j}`;
+  return `<div class="dsay"><input type="text" id="${id}" placeholder="${ph}" onkeydown="if(event.key==='Enter')dkDo('${what}',${i},'${coll}',${j},'${id}')">
+    <button class="btn" onclick="dkDo('${what}',${i},'${coll}',${j},'${id}')">${label}</button></div>`;
+}
+// Everything known about one item, as one block per world (shown as tabs).
+function dkDetail(it,i){
   let h='';
-  rvSent.forEach((s,i)=>{
-    h+=`<div class="rsent"><span>✓ ${s.mock?'Practice-sent':'Sent'} to <b>${esc(s.ref)}</b></span>
-      ${s.mock?'':`<a href="${esc(s.url)}" target="_blank" rel="noopener" class="btn">open ↗</a>`}
-      <span class="mut">Reply in the chat thread:</span> <code>${esc(s.reply)}</code>
-      <button class="btn" onclick="rvCopy(${i},this)">Copy</button>
-      <span style="flex:1"></span><button class="btn" onclick="rvSent.splice(${i},1);load()">✕</button></div>`;
+  const msg=dkMsg[it.id];
+  if(msg)h+=`<div class="${msg.ok?'dok':'rerr'}">${esc(msg.text)}${msg.url?`<a href="${esc(msg.url)}" target="_blank" rel="noopener">open ↗</a>`:''}</div>`;
+  const S={}, top=h; h='';
+  (it.incidents||[]).forEach((x,j)=>{
+    h+=`<div class="dsec"><div class="dsech"><span class="dsrc pagerduty">PagerDuty</span>
+      <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>
+      <span class="status ${x.status==='triggered'?'discarded':'approved'}">${esc(x.status)}</span>
+      <span class="mut">${esc(x.detail)}${x.author?' · '+esc(x.author):''} · opened ${relTime(x.updated_ts)}</span></div>
+      <div class="dact">${x.status==='triggered'?`<button class="btn go" onclick="dkDo('pagerduty/ack',${i},'incidents',${j})">Acknowledge</button>`:''}
+        <button class="btn ${dkConfirm===it.id+':'+j?'bad':''}" onclick="dkResolve(${i},${j})">${dkConfirm===it.id+':'+j?'Resolve for everyone?':'Resolve'}</button></div>
+      ${dkSay(i,'incidents',j,'pagerduty/note','Add note','Note on the incident…')}</div>`;
   });
-  if(mock)h+=`<div class="rmock">Practice mode — Send writes a local file and nothing reaches Jira. Connect Jira in Settings when you are ready.</div>`;
-  const n=rvList.length;
-  h+=`<div class="rvtop"><h2>${n?`${n} update${n>1?'s':''} to review`:'Review'}</h2>
-    <span class="mut">Nothing leaves this machine until you press Send.</span><span style="flex:1"></span>
-    ${rvClip?'':`<button class="btn" id="clipbtn" onclick="rvClip=true;load()">＋ Add a chat thread</button>`}</div>`;
-  if(rvClip){
-    h+=`<div class="rcard"><div class="rtitle">Add a chat thread</div>
+  S.pagerduty=h; h='';
+  if(it.key){
+    const j=it.jira, d=dkJira[it.key];
+    h+=`<div class="dsec"><div class="dsech"><span class="dsrc jira">Jira</span>`;
+    if(d&&d.key){
+      h+=`<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.key)} — ${esc(d.summary)}</a>
+        <span class="status approved">${esc(d.status)}</span>
+        <span class="mut">${esc(d.assignee)}${d.priority?' · '+esc(d.priority):''}</span></div>`;
+      if((d.comments||[]).length){
+        h+=`<div class="dcomments">${d.comment_total>d.comments.length?`<div class="mut">Latest ${d.comments.length} of ${d.comment_total} comments</div>`:''}`
+          +d.comments.map(c=>`<div class="dcomment"><b>${esc(c.author)}</b> <span class="mut">${relTime(c.ts)}</span><div>${esc(c.text)}</div></div>`).join('')+`</div>`;
+      }
+      if((d.transitions||[]).length)h+=`<div class="dact"><span class="mut">Move to</span>${d.transitions.map(t=>`<button class="btn" onclick="dkDo('jira/transition',${i},'jira',0,null,{id:'${esc(t.id)}',name:'${esc(t.name).replace(/'/g,'')}'})">${esc(t.name)}</button>`).join('')}</div>`;
+      h+=dkSay(i,'jira',0,'jira/comment','Comment','Comment on the ticket…');
+    } else if(j){
+      h+=`<a href="${esc(j.url)}" target="_blank" rel="noopener">${esc(it.key)} — ${esc(j.title)}</a>
+        <span class="status approved">${esc(j.status)}</span></div>
+        <div class="mut dnote">${d&&d.error?'Could not load the ticket: '+esc(d.error):'Loading the ticket…'}</div>`;
+    } else {
+      h+=`<span class="key">${esc(it.key)}</span></div>
+        <div class="mut dnote">${!state.atlassian_authed?'Connect Atlassian in Settings to see and update this ticket.':(d&&d.error?'Could not load the ticket: '+esc(d.error):'Loading the ticket…')}</div>`;
+    }
+    h+=`</div>`;
+  }
+  S.jira=h; h='';
+  (it.mrs||[]).forEach((x,j)=>{
+    h+=`<div class="dsec"><div class="dsech"><span class="dsrc gitlab">GitLab</span>
+      <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>
+      <span class="status ${x.kind==='mr-review'?'published':'draft'}">${x.kind==='mr-review'?'your review':'yours'}${x.status==='draft'?' · draft':''}</span>
+      <span class="mut">${x.author?esc(x.author)+' · ':''}${esc(x.detail)} · ${relTime(x.updated_ts)}</span></div>
+      <div class="dact">${x.kind==='mr-review'?`<button class="btn go" onclick="dkDo('gitlab/approve',${i},'mrs',${j})">Approve</button>`:''}</div>
+      ${dkSay(i,'mrs',j,'gitlab/comment','Comment','Comment on the merge request…')}</div>`;
+  });
+  S.gitlab=h; h='';
+  (it.pages||[]).forEach((x,j)=>{
+    h+=`<div class="dsec"><div class="dsech"><span class="dsrc confluence">Confluence</span>
+      <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>
+      <span class="mut">${x.author?esc(x.author)+' · ':''}edited ${relTime(x.updated_ts)}</span></div>
+      ${x.detail?`<div class="mut dnote">${esc(x.detail)}</div>`:''}
+      ${dkSay(i,'pages',j,'confluence/append','Append','Add a line to the end of this page…')}</div>`;
+  });
+  S.confluence=h; h='';
+  if((it.chat||[]).length){
+    h+=`<div class="dsec"><div class="dsech"><span class="dsrc chat">Chat</span><span class="mut">Mentions of ${esc(it.key||'this')} that aren't in an update yet</span></div>`
+      +it.chat.map(c=>dkChatRow(c,'Move to…')).join('')+`</div>`;
+  }
+  S.chat=h; h='';
+  (it.cards||[]).forEach(c=>{ h+=rvCard(c,rvList.indexOf(c)); });
+  S.update=h;
+  return {top,S};
+}
+// The Stream fits the window: items on the left, the picked one on the right
+// with a tab per world, and everything occasional in a pop-over. Nothing here
+// makes the page scroll.
+const DK_TABS=[['pagerduty','PagerDuty'],['update','Update'],['gitlab','GitLab'],['jira','Jira'],['chat','Chat'],['confluence','Confluence']];
+const DK_NEEDTAB={'Paging you':'pagerduty','Incident open':'pagerduty','Review requested':'gitlab','Mentioned in chat':'chat'};
+let dkSel=null, dkTab={}, dkOver=null, dkSlackId=null, dkLoose=[];
+function dkPick(i){ const it=dkItems[i]; if(!it)return; dkSel=it.id; load(); }
+function dkSetTab(k){ dkTab[dkSel]=k; load(); }
+function dkOpenOver(what){ dkOver=what; load(); }
+function dkCloseOver(){ if(dkOver==='slack'&&dkSlackId)delete rvSlackText[dkSlackId]; dkOver=null; dkOther=null; load(); }
+function dkTabCount(it,k){ const n={pagerduty:(it.incidents||[]).length,gitlab:(it.mrs||[]).length,confluence:(it.pages||[]).length,chat:(it.chat||[]).length,update:(it.cards||[]).length}[k]||0; return n>1?` <span class="mut">${n}</span>`:''; }
+function dkOverlay(){
+  if(!dkOver)return '';
+  let body='', side=false;
+  const close=`<button class="btn" onclick="dkCloseOver()">Close</button>`;
+  if(dkOver==='chat'){
+    side=true;
+    body=`<div class="rhead"><span class="rtitle">Unfiled chat</span><span style="flex:1"></span>${close}</div>
+      <div class="rhint">These didn't name a ticket or fall inside any work. File the ones that matter under a row — they go into that update — and dismiss the rest.</div>`
+      +(dkLoose.length?dkLoose.map(c=>dkChatRow(c,'File under…')).join(''):`<div class="rdone"><b>All filed.</b></div>`);
+  } else if(dkOver==='handoff'&&rvHandoff){
+    const x=rvHandoff;
+    body=`<div class="rhead"><span class="rtitle">Handoff note for the next shift</span><span class="rmeta">Confluence page · ${esc(x.title)}</span></div>
+      <div class="rbody" style="margin-top:10px">${rvRender(x.body)}</div>
+      <div class="ract"><button class="btn go" onclick="rvSendHandoff(${x.id})">Send to Confluence</button>
+        <button class="btn" onclick="dkOver=null;cur='Drafts';load()">Edit</button>${close}<span class="rerr" id="handerr"></span></div>`;
+  } else if(dkOver==='clip'){
+    body=`<div class="rtitle">Add a chat thread</div>
       <div class="rhint">Copy the messages in Slack and paste them here. Scribe attaches them to the work they explain — or run <span class="mono">scribe clip</span> in a terminal to take them straight from the clipboard.</div>
       <textarea id="cliptext" style="margin-top:10px" placeholder="Paste the thread…"></textarea>
       <div class="ract"><input type="text" id="cliptkt" placeholder="ticket (optional)">
-        <button class="btn go" onclick="rvAddClip()">Add</button>
-        <button class="btn" onclick="rvClip=false;load()">Cancel</button><span class="rerr" id="cliperr"></span></div></div>`;
-  }
-  if(!n)h+=`<div class="rdone"><b>You're all caught up.</b>${state.capture_live?'Work you do in your terminal will appear here.':'Nothing captured recently — see the note above to switch capture on.'}</div>`;
-  rvList.forEach((c,i)=>{h+=rvCard(c,i);});
-  if(rvHandoff){
-    const x=rvHandoff;
-    h+=`<div class="rcard"><div class="rhead"><span class="rtitle">Handoff note for the next shift</span>
-      <span class="rmeta">Confluence page · ${esc(x.title)}</span></div>
-      ${rvHand?`<div class="rbody" style="margin-top:10px">${rvRender(x.body)}</div>`:''}
-      <div class="ract"><button class="btn go" onclick="rvSendHandoff(${x.id})">Send to Confluence</button>
-        <button class="btn" onclick="rvHand=!rvHand;load()">${rvHand?'Hide':'Preview'}</button>
-        <button class="btn" onclick="cur='Drafts';load()">Edit</button>
-        <span class="rerr" id="handerr"></span></div></div>`;
-  }
-  m.innerHTML=h;
+        <button class="btn go" onclick="rvAddClip()">Add</button>${close}<span class="rerr" id="cliperr"></span></div>`;
+  } else if(dkOver==='slack'&&rvSlackText[dkSlackId]!==undefined){
+    body=`<div class="rtitle">Slack post</div>
+      <div class="rhint">Edit, copy, and paste it into the channel. Scribe can't post to Slack itself; nothing is sent until you paste it.</div>
+      <textarea id="rvsl" style="margin-top:10px;min-height:220px" oninput="rvSlackText[dkSlackId]=this.value">${esc(rvSlackText[dkSlackId])}</textarea>
+      <div class="ract"><button class="btn go" onclick="rvSlackCopy(this)">Copy</button>${close}</div>`;
+  } else return '';
+  return `<div class="dover ${side?'side':''}" onclick="if(event.target===this)dkCloseOver()"><div class="dmodal">${body}</div></div>`;
 }
+async function renderDesk(m){
+  const d=await api('/api/desk'); const dk=d.desk||{items:[]};
+  const keep={}; ['dlist','dpbody'].forEach(id=>{ const e=document.getElementById(id); if(e)keep[id]=e.scrollTop; });
+  const was=dkSel;
+  dkItems=dk.items||[]; rvList=dkItems.flatMap(it=>it.cards||[]); rvHandoff=d.handoff||null; dkLoose=dk.loose||[];
+  const inb=state.inbox||{}, connected=inb.jira||inb.gitlab||inb.pagerduty;
+  if(!dkItems.some(it=>it.id===dkSel))dkSel=((dkItems.find(it=>(it.needs||[]).length)||dkItems[0]||{}).id)||null;
+  const si=dkItems.findIndex(it=>it.id===dkSel), sel=dkItems[si];
+  const n=dk.needs||0;
+  let h=`<div class="dtop"><h2>${n?`${n} need${n>1?'':'s'} you`:'Nothing needs you'}</h2>
+    <span class="mut">${dkBusy?esc(dkBusy):(dk.fetched_ts?'Other systems checked '+relTime(dk.fetched_ts):'')}</span>
+    ${dk.live?'':`<span class="schip draft" title="Send writes a local file, and acting on other systems is switched off. Turn on posting in Settings → Connections when you are ready.">Practice mode</span>`}
+    <span style="flex:1"></span>
+    ${dkLoose.length?`<button class="btn" onclick="dkOpenOver('chat')" title="Chat messages that matched no ticket and no work">Unfiled chat <b>${dkLoose.length}</b></button>`:''}
+    ${rvHandoff?`<button class="btn" onclick="dkOpenOver('handoff')">Handoff note</button>`:''}
+    <button class="btn" id="clipbtn" onclick="dkOpenOver('clip')">＋ Chat thread</button>
+    <button class="btn" onclick="dkRefresh()" title="Check Jira, GitLab, PagerDuty and Confluence now">↻</button></div>`;
+  if(!dkItems.length){
+    h+=`<div class="rdone"><b>Nothing here yet.</b>${state.capture_live?'Work you do in your terminal, and anything assigned to you, will appear here.':'Nothing captured recently — see the note above to switch capture on.'}
+      ${connected?'':`<div style="margin-top:8px"><a href="#" onclick="cur='Settings';load();return false">Connect Jira, GitLab and PagerDuty</a> to bring the rest in.</div>`}</div>`;
+  } else {
+    h+=`<div class="dsplit"><div class="dlist" id="dlist">`;
+    dkItems.forEach((it,i)=>{
+      const needs=(it.needs||[]), level=it.rank>=100?'hot':(needs.length?'need':'quiet');
+      h+=`<div class="drow2 ${level} ${it.id===dkSel?'on':''}" onclick="dkPick(${i})"><span class="ddot"></span>
+        <div class="dmain"><div class="dl1">${it.key?`<span class="key">${esc(it.key)}</span>`:''}<span class="dtitle">${esc(it.title)}</span></div>
+          <div class="dl2">${needs.length?needs.map(esc).join(' · '):(it.sources||[]).map(x=>DK_SRC[x]||x).join(' · ')}</div></div>
+        <span class="mut dwhen">${it.updated_ts?relTime(it.updated_ts):''}</span></div>`;
+    });
+    if(!connected)h+=`<div class="rhint" style="padding:10px 12px">Only work captured on this machine is shown. <a href="#" onclick="cur='Settings';load();return false">Connect Jira, GitLab and PagerDuty</a> to bring the rest in.</div>`;
+    h+=`</div><div class="dpane">`;
+    if(sel){
+      dkLoadJira(sel.key);
+      const {top,S}=dkDetail(sel,si), tabs=DK_TABS.filter(([k])=>S[k]);
+      let tab=dkTab[sel.id];
+      if(!S[tab])tab=DK_NEEDTAB[(sel.needs||[])[0]]; if(!S[tab])tab=S.update?'update':(tabs[0]||[])[0];
+      h+=`<div class="dphead">${sel.key?`<span class="key">${esc(sel.key)}</span>`:''}<span class="dtitle">${esc(sel.title)}</span>
+          ${(sel.needs||[]).length?`<span class="dneeds ${sel.rank>=100?'hot':''}">${sel.needs.map(esc).join(' · ')}</span>`:''}</div>
+        <div class="dtabs" ${tabs.length<2?'hidden':''}>${tabs.map(([k,l])=>`<button class="${k===tab?'on':''}" onclick="dkSetTab('${k}')">${l}${dkTabCount(sel,k)}</button>`).join('')}</div>
+        <div class="dpbody" id="dpbody">${top}${S[tab]||''}</div>`;
+    }
+    h+=`</div></div>`;
+  }
+  if(rvSent.length){
+    h+=`<div class="dtoasts">`;
+    rvSent.forEach((s,i)=>{
+      h+=s.local?`<div class="rsent"><span>✓ Kept in <b>your local log</b> — nothing was posted</span>
+        <a href="#" class="btn" onclick="cur='Logged';load();return false">Open History</a>`
+      :`<div class="rsent"><span>✓ ${s.mock?'Practice-sent':'Sent'} to <b>${esc(s.ref)}</b></span>
+        ${s.mock?'':`<a href="${esc(s.url)}" target="_blank" rel="noopener" class="btn">open ↗</a>`}
+        <span class="mut">Reply in the chat thread:</span> <code>${esc(s.reply)}</code>
+        <button class="btn" onclick="rvCopy(${i},this)">Copy</button>`;
+      h+=`<span style="flex:1"></span><button class="btn" onclick="rvSent.splice(${i},1);load()">✕</button></div>`;
+    });
+    h+=`</div>`;
+  }
+  if(dkOver==='chat'&&!dkLoose.length&&!dkOther)dkOver=null;
+  m.innerHTML=h+dkOverlay();
+  // Same item as before: stay where the reader was. A new pick starts at the top.
+  const l=document.getElementById('dlist'), b=document.getElementById('dpbody');
+  if(l&&keep.dlist!==undefined)l.scrollTop=keep.dlist;
+  if(b&&keep.dpbody!==undefined&&was===dkSel)b.scrollTop=keep.dpbody;
+  const on=document.querySelector('.drow2.on'); if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest'});
+}
+// Arrow keys (or j/k) walk the list; Escape closes whatever is open on top.
+window.addEventListener('keydown',e=>{
+  if(cur!=='Desk'||tourI>=0)return;
+  if(e.key==='Escape'&&dkOver){ dkCloseOver(); return; }
+  const a=document.activeElement, typing=a&&['INPUT','TEXTAREA','SELECT'].includes(a.tagName);
+  if(typing||dkOver||e.ctrlKey||e.metaKey||e.altKey)return;
+  const step=(e.key==='ArrowDown'||e.key==='j')?1:(e.key==='ArrowUp'||e.key==='k')?-1:0;
+  if(!step||!dkItems.length)return;
+  e.preventDefault();
+  const i=Math.max(0,Math.min(dkItems.length-1,dkItems.findIndex(it=>it.id===dkSel)+step));
+  dkPick(i);
+});
 function rvCard(c,i){
   const editing=rvEdit.has(c.id), open=rvOpen.has(c.id), thread=c.kind==='thread';
   const chips=(c.kind==='interrupt'?'<span class="schip draft">interruption</span>':'')
@@ -545,20 +835,28 @@ function rvCard(c,i){
     offered.forEach((x,j)=>{
       const k=c.context.indexOf(x);
       h+=`<div class="rctx off"><span class="rtext">${esc(x.text)} <span class="mut">· ${relTime(x.ts)}</span></span>
-        <button class="btn" onclick="rvInclude(${i},${k})">${(rvVal(c,'inc',[])).includes(x.id)?'Added ✓':'＋ Add'}</button></div>`;
+        <button class="btn" onclick="rvInclude(${i},${k})">${(rvVal(c,'inc',[])).includes(x.id)?'Added ✓':'＋ Add'}</button>${dkMove(x.id,'Move to…')}</div>`;
     });
   }
-  h+=`<div class="rsec">${c.ticket||thread?'Update to post in Jira':'New Jira ticket'}</div>`;
+  const inUpdate=(c.context||[]).filter(x=>x.included);
+  if(inUpdate.length&&!thread){
+    h+=`<div class="rsec">Chat in this update</div>`
+      +inUpdate.map(x=>`<div class="rctx"><span class="rtext">${esc(x.text)} <span class="mut">· ${relTime(x.ts)}</span></span>${dkMove(x.id,'Move to…')}</div>`).join('');
+  }
+  h+=`<div class="rsec">${c.follows?`More on this since the update you sent ${relTime(c.follows_ts)}`:(c.ticket||thread?'Update to post in Jira':'New Jira ticket')}</div>`;
   h+=editing?`<textarea id="rvta-${i}" oninput="rvText[rvList[${i}].id]=this.value">${esc(rvBody(c))}</textarea>`
             :`<div class="rbody">${rvRender(rvBody(c))}</div>`;
   h+=`<div class="ract">`;
   if(!c.ticket)h+=`<input type="text" placeholder="${thread?'ticket':'existing ticket?'}" value="${esc(rvVal(c,'ticket',''))}" oninput="rvSet(${i},'ticket',this.value)">`;
   if(!thread)h+=`<input type="text" class="rtime" title="Time to log, e.g. 45m or 1h30m" value="${esc(rvVal(c,'time',fmtDur(c.secs)))}" oninput="rvSet(${i},'time',this.value)">`;
-  h+=`<button class="btn go" onclick="rvSend(${i})">Send to Jira</button>
+  h+=`<button class="btn go" onclick="rvSend(${i})" ${c.follows?'title="Posts only this addition to Jira and adds it to the same entry in History"':''}>${c.follows?'Send the addition':'Send to Jira'}</button>
+    <button class="btn" onclick="rvSend(${i},true)" title="Keep this update and its time in History on this machine only. You can still push it to Jira from there.">Log only</button>
+    <button class="btn" onclick="rvSlack(${i})" title="Turn this update into a message you can paste into Slack">Slack post</button>
     <button class="btn" onclick="rvToggleEdit(${i})">${editing?'Done editing':'Edit'}</button>
     <button class="btn" onclick="rvSkip(${i})" title="Not worth recording — moves to History, where you can bring it back">Skip</button>
     <span style="flex:1"></span>
     ${np+nc?`<span class="rlink" onclick="rvToggleOpen(${i})">${open?'hide':'show'} ${[np?np+' prompt'+(np>1?'s':''):'',nc?nc+' command'+(nc>1?'s':''):''].filter(Boolean).join(' · ')}</span>`:''}</div>`;
+  if(c.path&&!thread)h+=`<div class="rhint"><span class="rlink" onclick="rvIgnore(${i})" title="Work here will be logged silently from now on, and never shown on the Stream. Undo in Settings → Events.">Don't ask about ${esc(c.place||c.path)} again — log it silently</span></div>`;
   if(!c.ticket&&!thread)h+=`<div class="rhint">No ticket was set for this work. Send creates a new Jira ticket — or enter an existing one to log it there.</div>`;
   if(rvErr[c.id])h+=`<div class="rerr">${esc(rvErr[c.id])}</div>`;
   if(open)h+=`<div class="fdetail">${(c.prompts||[]).map(x=>`<div class="rprompt"><span class="mut">${esc(x.tool)} · ${relTime(x.ts)}</span><br>${esc(x.text)}</div>`).join('')}${(c.commands||[]).map(x=>`<div class="cmd">${esc(x)}</div>`).join('')}</div>`;
@@ -581,12 +879,29 @@ function rvPayload(c){
     title:c.kind==='interrupt'&&c.note?c.note:('Unplanned work'+(c.place?' in '+c.place:'')),
     body:rvBody(c), secs:Math.max(0,parseDur(rvVal(c,'time',fmtDur(c.secs))))};
 }
-function rvForget(c){ delete rvText[c.id]; delete rvVals[c.id]; delete rvErr[c.id]; rvEdit.delete(c.id); rvOpen.delete(c.id); }
-async function rvSend(i){
+let rvSlackText={};
+async function rvSlack(i){
   const c=rvList[i]; if(!c)return;
-  const r=await api('/api/review/send',{method:'POST',body:JSON.stringify(rvPayload(c))});
-  if(!r.ok){ rvErr[c.id]='Not sent: '+(r.error||'error'); load(); return; }
-  rvSent.unshift({ref:r.ref,url:r.url,reply:r.reply,mock:r.mock}); rvSent=rvSent.slice(0,5);
+  const r=await api('/api/review/slack',{method:'POST',body:JSON.stringify(rvPayload(c))});
+  rvSlackText[c.id]=r.text||''; dkSlackId=c.id; dkOver='slack'; load();
+}
+async function rvSlackCopy(btn){
+  const el=document.getElementById('rvsl');
+  try{ await navigator.clipboard.writeText(el.value); btn.textContent='Copied ✓'; }
+  catch(e){ el.select(); btn.textContent='Press Ctrl+C to copy'; }
+}
+function rvForget(c){ delete rvSlackText[c.id]; delete rvText[c.id]; delete rvVals[c.id]; delete rvErr[c.id]; rvEdit.delete(c.id); rvOpen.delete(c.id); }
+async function rvSend(i,local){
+  const c=rvList[i]; if(!c)return;
+  const r=await api('/api/review/send',{method:'POST',body:JSON.stringify({...rvPayload(c),local:!!local,append_to:local?0:(c.follows||0)})});
+  if(!r.ok){ rvErr[c.id]=(local?'Not logged: ':'Not sent: ')+(r.error||'error'); load(); return; }
+  rvSent.unshift({ref:r.ref,url:r.url,reply:r.reply,mock:r.mock,local:!!local}); rvSent=rvSent.slice(0,5);
+  rvForget(c); await refresh(); load();
+}
+async function rvIgnore(i){
+  const c=rvList[i]; if(!c||!c.path)return;
+  const r=await api('/api/ignore',{method:'POST',body:JSON.stringify({path:c.path})});
+  if(!r.ok){ rvErr[c.id]=r.error||'could not ignore it'; load(); return; }
   rvForget(c); await refresh(); load();
 }
 async function rvSkip(i){
@@ -598,11 +913,12 @@ async function rvAddClip(){
   const text=document.getElementById('cliptext').value, ticket=document.getElementById('cliptkt').value;
   const r=await api('/api/context/clip',{method:'POST',body:JSON.stringify({text,ticket})});
   if(!r.ok){ document.getElementById('cliperr').textContent=r.error||'failed'; return; }
-  rvClip=false; await refresh(); load();
+  dkOver=null; await refresh(); load();
 }
 async function rvSendHandoff(id){
   const r=await api('/api/drafts/'+id+'/publish',{method:'POST'});
   if(!r.ok){ document.getElementById('handerr').textContent='Not sent: '+(r.error||'error'); return; }
+  dkOver=null;
   rvSent.unshift({ref:r.ref,url:r.url,reply:'Handoff note: '+r.url,mock:(state.config||{}).publish_backend!=='atlassian'});
   await refresh(); load();
 }
@@ -928,7 +1244,7 @@ async function _renderLogged(m){
     h+='<div class="wltotals">'+totals.map(t=>`<div class="wlbar"><span class="wlproj mono">${esc(prettyCwd(t.project))}</span><span class="wlsecs"><b>${fmtDur(t.secs)}</b></span></div>`).join('')+'</div>';
   h+='</div>';
   if(!entries.length){
-    h+='<div class="empty">Nothing here yet. Updates you send or skip on Review are kept here.</div>';
+    h+='<div class="empty">Nothing here yet. Updates you send or skip, and actions you take in other systems, are kept here.</div>';
     m.innerHTML=h; return;
   }
   if(sel) h+=`<div class="selbar">${sel} work item${sel>1?'s':''} selected on the Stream — pick “＋ add” on an event below to append ${sel>1?'them':'it'}.</div>`;
@@ -953,7 +1269,7 @@ function loggedEntry(e,sel){
   let detail='';
   if(open){
     const rows=(e.breakdown||[]).map(b=>`<div class="bdrow"><span class="mut">${dayLabel(b.ts)}</span><span class="bdsecs">${fmtDur(b.secs)}</span><span class="mut">${b.count} item${b.count>1?'s':''}</span></div>`).join('');
-    detail=`<div class="fdetail">${rows||'<span class="mut">no work attached</span>'}</div>`;
+    detail=`<div class="fdetail">${e.body?`<div class="rbody">${rvRender(e.body)}</div>`:''}${rows||(e.body?'':'<span class="mut">no work attached</span>')}</div>`;
   }
   const canSend = e.draft_id && (e.draft_status==='draft'||e.draft_status==='approved');
   let actions='';
@@ -973,7 +1289,7 @@ function loggedEntry(e,sel){
       ${e.tag?`<span class="schip tag">${esc(e.tag)}</span>`:''}
       <span class="lgtitle mut">${esc(prettyCwd(e.project)||e.title)}</span>
       <span class="schip">${e.count} item${e.count>1?'s':''}</span>${multiDay?`<span class="schip">${(e.breakdown||[]).length} days</span>`:''}
-      ${statusChip}
+      ${statusChip}${e.silent?'<span class="schip" title="Logged without asking: its path is ignored">silent</span>':''}${e.auto&&!e.silent?`<span class="schip" title="Later work on the same event was added automatically">+${e.auto} added</span>`:''}
       ${detail}
     </span>
     ${time}
@@ -1107,17 +1423,6 @@ async function pollAnsible(id,out,cmd){
   out.scrollTop=out.scrollHeight;
   if(!r.done)setTimeout(()=>pollAnsible(id,out,cmd),700);
 }
-async function renderScratchpad(m){
-  const d=await api('/api/scratchpad');
-  m.innerHTML=`<div class="card"><div class="row"><b>Scratchpad</b><span class="mut">private notes, saved locally to ~/.scribe/scratchpad.md</span></div>
-    <textarea id="spad" style="min-height:440px" onblur="saveScratch()">${esc(d.text||'')}</textarea>
-    <div class="actions"><button class="btn go" onclick="saveScratch()">Save</button><span class="mut" id="spadmsg" style="align-self:center"></span></div></div>`;
-}
-async function saveScratch(){
-  const el=document.getElementById('spad'); if(!el)return;
-  await api('/api/scratchpad',{method:'POST',body:JSON.stringify({text:el.value})});
-  const msg=document.getElementById('spadmsg'); if(msg){msg.textContent='saved';setTimeout(()=>{if(msg)msg.textContent='';},1500);}
-}
 async function renderPrompts(m){
   const d=await api('/api/prompts');
   const ss=d.sessions||[];
@@ -1160,9 +1465,10 @@ async function renderSettings(m){
     </div>
     <div class="card"><div class="row"><b>Connections</b>
       <span class="status ${state.inbox&&state.inbox.gitlab?'published':'draft'}">GitLab ${state.inbox&&state.inbox.gitlab?'connected':'off'}</span>
-      <span class="status ${state.atlassian_authed?'published':'draft'}">Atlassian ${state.atlassian_authed?'connected':'off'}</span></div>
+      <span class="status ${state.atlassian_authed?'published':'draft'}">Atlassian ${state.atlassian_authed?'connected':'off'}</span>
+      <span class="status ${state.inbox&&state.inbox.pagerduty?'published':'draft'}">PagerDuty ${state.inbox&&state.inbox.pagerduty?'connected':'off'}</span></div>
       <p class="mut" style="font-size:12.5px;margin:8px 0 0">Tokens are kept in <code>secrets.json</code> in Scribe's folder, readable only by you. They are never shown again after saving — leave a token box empty to keep the saved one.</p>
-      <div style="margin-top:12px"><b style="font-size:13px">GitLab</b> <span class="mut" style="font-size:12px">— one row per GitLab you use; token needs the <code>read_api</code> scope</span></div>
+      <div style="margin-top:12px"><b style="font-size:13px">GitLab</b> <span class="mut" style="font-size:12px">— one row per GitLab you use; the token needs <code>read_api</code> to view, <code>api</code> to comment and approve</span></div>
       <div id="glrows"></div>
       <div class="actions"><button class="btn" onclick="connAddGitlab()">＋ Add a GitLab</button></div>
       <div style="margin-top:12px"><b style="font-size:13px">Atlassian (Jira + Confluence)</b> <span class="mut" style="font-size:12px">— API token from id.atlassian.com → Security → API tokens</span></div>
@@ -1172,7 +1478,14 @@ async function renderSettings(m){
         <div><label>API token</label><input type="password" id="attoken" autocomplete="off"></div>
         <div class="connres" id="atres"></div>
       </div>
-      <label style="display:flex;gap:6px;align-items:center;margin:12px 0 0;color:var(--fg);font-size:13px"><input type="checkbox" id="connlive" style="width:auto" ${c.publish_backend==='atlassian'?'checked':''}> Post to the real Jira and Confluence when I press Send (off = practice mode, nothing leaves this machine)</label>
+      <div style="margin-top:12px"><b style="font-size:13px">PagerDuty</b> <span class="mut" style="font-size:12px">— personal API key from My Profile → User Settings → Create API User Token</span></div>
+      <div class="connrow">
+        <div></div>
+        <div><label>Your PagerDuty email</label><input type="text" id="pdemail" placeholder="you@yourco.com"></div>
+        <div><label>API key</label><input type="password" id="pdtoken" autocomplete="off"></div>
+        <div class="connres" id="pdres"></div>
+      </div>
+      <label style="display:flex;gap:6px;align-items:center;margin:12px 0 0;color:var(--fg);font-size:13px"><input type="checkbox" id="connlive" style="width:auto" ${c.publish_backend==='atlassian'?'checked':''}> Post and act for real in Jira, Confluence, GitLab and PagerDuty when I press a button (off = practice mode, nothing leaves this machine)</label>
       <div class="actions"><button class="btn go" onclick="connSave()">Save</button><button class="btn" onclick="connTest()">Test connections</button><span class="mut" id="connmsg" style="font-size:12px"></span></div>
     </div>
     <div class="card"><div class="row"><b>Publishing</b>
@@ -1192,6 +1505,19 @@ async function renderSettings(m){
       <label>Auto-refresh inbox every (seconds, 0 = off)</label><input type="number" id="inbsec" value="${c.inbox_refresh_seconds!=null?c.inbox_refresh_seconds:300}" style="width:120px">
       <div class="actions"><button class="btn go" onclick="saveCfg()">Save</button></div>
       <p class="mut" style="font-size:12px">GitLab merge requests (assigned + to-review) and assigned Jira issues use the accounts under <b>Connections</b> above. With auto-refresh on, a background thread pulls in new items on its own; you can still hit <b>↻ refresh inbox</b> on the Stream (or <code>scribe pull</code>) any time.</p>
+    </div>
+    <div class="card"><div class="row"><b>Events</b></div>
+      <p class="mut" style="font-size:12px;margin:6px 0 0">An event is one piece of work — a ticket, or a project when there is no ticket. More work on the same event joins it. Time is always logged by day, whichever you choose here.</p>
+      <label>Start a new event for the same work</label>
+      <select id="evsplit" style="width:auto">
+        <option value="auto" ${(c.event_split||'auto')==='auto'?'selected':''}>Automatically — on a new day, after a real break (6 hours)</option>
+        <option value="day" ${c.event_split==='day'?'selected':''}>Every day</option>
+        <option value="never" ${c.event_split==='never'?'selected':''}>Never — one event until I send or log it</option>
+      </select>
+      <label>Ignored paths (one per line)</label>
+      <textarea id="ignpaths" style="min-height:70px" placeholder="~/scratch">${esc((c.ignored_paths||[]).join('\n'))}</textarea>
+      <div class="actions"><button class="btn go" onclick="saveCfg()">Save</button></div>
+      <p class="mut" style="font-size:12px">Work under an ignored path never asks for your attention: it is logged silently to History and the journal, by day, and can be pushed to Jira from History if you ever need it.</p>
     </div>
     <div class="card"><div class="row"><b>Chat context</b>
       <span class="status ${c.capture_notifications?'published':'draft'}">${c.capture_notifications?'listening':'off'}</span></div>
@@ -1218,6 +1544,9 @@ function connLoad(){
   document.getElementById('atsite').value=a.site||'';
   document.getElementById('atemail').value=a.email||'';
   document.getElementById('attoken').placeholder=a.token_set?'saved — leave empty to keep':'paste token';
+  const pd=k.pagerduty||{};
+  document.getElementById('pdemail').value=pd.email||'';
+  document.getElementById('pdtoken').placeholder=pd.token_set?'saved — leave empty to keep':'paste key';
 }
 function connDrawGitlab(res){
   document.getElementById('glrows').innerHTML=glConns.map((g,i)=>`<div class="connrow">
@@ -1244,7 +1573,8 @@ async function connSave(){
   const live=document.getElementById('connlive').checked;
   const r=await api('/api/secrets',{method:'POST',body:JSON.stringify({
     gitlab:glConns.map(g=>({id:g.id,name:g.name,base_url:g.base_url,token:g.token||''})),
-    atlassian:{site:document.getElementById('atsite').value,email:document.getElementById('atemail').value,token:document.getElementById('attoken').value}})});
+    atlassian:{site:document.getElementById('atsite').value,email:document.getElementById('atemail').value,token:document.getElementById('attoken').value},
+    pagerduty:{email:document.getElementById('pdemail').value,token:document.getElementById('pdtoken').value}})});
   if(r&&r.error){msg.textContent='Not saved: '+r.error;return false;}
   await api('/api/config',{method:'POST',body:JSON.stringify({publish_backend:live?'atlassian':'mock'})});
   await refresh();load();
@@ -1256,6 +1586,7 @@ async function connTest(){
   const r=await api('/api/secrets/test',{method:'POST',body:'{}'});
   connDrawGitlab(r.gitlab||[]);
   document.getElementById('atres').innerHTML=connRes(r.atlassian);
+  document.getElementById('pdres').innerHTML=connRes(r.pagerduty);
   document.getElementById('connmsg').textContent='';
 }
 async function doReset(){
@@ -1282,6 +1613,8 @@ async function saveCfg(){
     jira_jql:(document.getElementById('jjql')||{}).value,
     inbox_refresh_seconds:+((document.getElementById('inbsec')||{}).value||0),
     capture_notifications:!!(document.getElementById('capnot')||{}).checked,
+    event_split:(document.getElementById('evsplit')||{}).value||'auto',
+    ignored_paths:((document.getElementById('ignpaths')||{}).value||'').split('\n').map(x=>x.trim()).filter(Boolean),
     notification_apps:(document.getElementById('notapps')||{}).value||'slack'})});
   await refresh();load();
 }
@@ -1315,15 +1648,15 @@ document.addEventListener('click',e=>{ const m=document.querySelector('.menu'); 
 
 // ---- Guided tour ----
 const TOUR=[
-  {title:'Welcome to Scribe 🪶', body:'Scribe watches the work you do in your terminal and writes the Jira update for you. You read it, then send, edit or skip. That is the whole job.'},
+  {title:'Welcome to Scribe 🪶', body:'One place for your work: Jira, GitLab, PagerDuty, Confluence and chat, next to what you actually did in your terminal. Scribe writes the update; you read it, then send, edit or skip.'},
   {sel:'#bar', title:'What you are working on', body:'Green dot = capturing. The ticket comes from your branch name (feat/OPS-1234) — change it here if it is wrong, and say so when you get pulled onto something else.'},
-  {sel:'main', title:'Review', body:'One card per piece of work, with the update Scribe would post. Send it, edit it first, or skip it. Nothing leaves this machine until you press Send.'},
+  {sel:'main', title:'The stream', body:'One row per piece of work on the left, most pressing first. Pick one and everything about it is on the right, a tab per system — ticket, merge requests, incidents, pages, chat — where you can act on it. Nothing leaves this machine until you press a button.'},
   {sel:'#clipbtn', title:'Bring in the why', body:'The reason for the work is usually in chat. Copy a thread and add it here (or run scribe clip) and it goes into the update — so the answer lives in Jira, not in Slack.'},
-  {sel:'#nav', title:'Everything else', body:'History shows what you sent or skipped. Settings connects Jira. The detailed views and tools are under More.'},
+  {sel:'#nav', title:'Everything else', body:'History shows what you sent or skipped. Settings connects your accounts. The detailed views and tools are under More.'},
   {sel:'#menubtn', title:"That's it", body:'Replay this tour from the ☰ menu anytime.'},
 ];
 let tourI=-1;
-function startTour(){ cur='Review'; load(); tourI=0; setTimeout(showTourStep,150); }
+function startTour(){ cur='Desk'; load(); tourI=0; setTimeout(showTourStep,150); }
 function endTour(){ tourI=-1; const ov=document.getElementById('tourov'); if(ov)ov.remove(); try{localStorage.setItem('scribe-toured','1');}catch(e){} }
 function tourNext(){ if(tourI<TOUR.length-1){tourI++; showTourStep();} else endTour(); }
 function tourBack(){ if(tourI>0){tourI--; showTourStep();} }
@@ -1382,7 +1715,7 @@ setInterval(async()=>{
   const sig=sigOf(state);
   // Don't auto-reload the interactive work surfaces (would wipe input/output),
   // or the Stream while items are selected (would drop the selection).
-  const interactive = cur==='Terminal' || cur==='Ansible' || cur==='Scratchpad' || (cur==='Stream' && (buildIds.length>0||builtDraftId));
+  const interactive = cur==='Terminal' || cur==='Ansible' || (cur==='Stream' && (buildIds.length>0||builtDraftId));
   if(sig!==lastSig){lastSig=sig; if(!interactive) load();}
 },4000);
 </script></body></html>

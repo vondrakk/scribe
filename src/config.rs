@@ -77,6 +77,11 @@ pub struct Config {
     pub capture_notifications: bool,
     /// Comma-separated app names whose notifications are recorded.
     pub notification_apps: String,
+    /// When work on the same thing counts as a new event: "auto" (after a real
+    /// break across a change of day), "day" (every day), "never".
+    pub event_split: String,
+    /// Paths whose work is logged without asking and kept off the Stream.
+    pub ignored_paths: Vec<String>,
 }
 
 impl Default for Config {
@@ -109,19 +114,10 @@ impl Default for Config {
             desktop_notifications: true,
             capture_notifications: false,
             notification_apps: "slack".to_string(),
+            event_split: "auto".to_string(),
+            ignored_paths: Vec::new(),
         }
     }
-}
-
-/// The logbook: handled-work bundles (combined / logged / disposed / sent). The
-/// Stream hides episodes recorded here; the Logged screen shows them.
-pub fn logbook_file() -> PathBuf {
-    home().join("logbook.json")
-}
-
-/// Manual per-episode time overrides (episode id → seconds).
-pub fn time_overrides_file() -> PathBuf {
-    home().join("time_overrides.json")
 }
 
 /// Where the Atlassian OAuth token store lives.
@@ -141,23 +137,6 @@ pub fn home() -> PathBuf {
     p
 }
 
-/// Append-only raw event log (JSONL). Shell + git hooks write here.
-pub fn events_log() -> PathBuf {
-    home().join("events.jsonl")
-}
-
-pub fn episodes_file() -> PathBuf {
-    home().join("episodes.json")
-}
-
-pub fn drafts_file() -> PathBuf {
-    home().join("drafts.json")
-}
-
-pub fn state_file() -> PathBuf {
-    home().join("state.json")
-}
-
 /// Plain-text current binding, read by the fast prompt-line segment.
 pub fn binding_file() -> PathBuf {
     home().join("binding")
@@ -165,14 +144,6 @@ pub fn binding_file() -> PathBuf {
 
 pub fn published_dir() -> PathBuf {
     let p = home().join("published");
-    let _ = fs::create_dir_all(&p);
-    p
-}
-
-/// AI prompts are recorded here, one JSONL file per session (indexed by
-/// session): prompts/<session>.jsonl.
-pub fn prompts_dir() -> PathBuf {
-    let p = home().join("prompts");
     let _ = fs::create_dir_all(&p);
     p
 }

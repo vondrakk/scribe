@@ -1,4 +1,4 @@
-//! The engineer's workbench: a scratchpad and an async command/Ansible runner.
+//! The engineer's workbench: an async command/Ansible runner.
 //!
 //! Commands run in a background thread (the panel server is single-threaded, so
 //! a long Ansible run must not block it) and their output is polled. True to the
@@ -13,7 +13,6 @@ use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 
 use crate::capture;
-use crate::config;
 use crate::model::now_ts;
 
 const OUTPUT_CAP: usize = 200_000;
@@ -112,18 +111,4 @@ pub fn start_run(cmd: &str, cwd: &str) -> String {
 
 pub fn get_run(id: &str) -> Option<Run> {
     registry().lock().ok().and_then(|m| m.get(id).cloned())
-}
-
-// --- scratchpad ------------------------------------------------------------
-
-fn scratchpad_path() -> std::path::PathBuf {
-    config::home().join("scratchpad.md")
-}
-
-pub fn read_scratchpad() -> String {
-    std::fs::read_to_string(scratchpad_path()).unwrap_or_default()
-}
-
-pub fn write_scratchpad(text: &str) {
-    let _ = std::fs::write(scratchpad_path(), text);
 }

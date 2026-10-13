@@ -3,7 +3,7 @@
 //! The app runs Scribe's panel service in-process on loopback (or joins one
 //! that is already running, e.g. `scribe up`) and shows it in a webview. The
 //! window closes to the tray; the tray menu covers what you want without
-//! opening it: what you're working on, how much is waiting for review, "I got
+//! opening it: what you're working on, how many things need you, "I got
 //! interrupted", and "add the chat thread I just copied".
 //!
 //! Shell and git capture still go through the `scribe` CLI, which ships next
@@ -18,7 +18,7 @@ use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
-use scribe::{binding, config, context, notify, panel, review};
+use scribe::{binding, config, context, desk, notify, panel};
 
 /// Passed by the login item, so starting at login doesn't pop a window.
 const HIDDEN_FLAG: &str = "--hidden";
@@ -130,14 +130,15 @@ fn show_window(app: &AppHandle) {
 }
 
 fn status_text() -> (String, usize) {
-    let waiting = review::build().len();
+    let waiting = desk::needs_count();
     let work = match binding::get_binding() {
         Some(b) => format!("Working on {}", b.ticket),
         None => "No ticket set".to_string(),
     };
     let review = match waiting {
-        0 => "nothing to review".to_string(),
-        n => format!("{n} to review"),
+        0 => "nothing needs you".to_string(),
+        1 => "1 needs you".to_string(),
+        n => format!("{n} need you"),
     };
     (format!("{work} · {review}"), waiting)
 }

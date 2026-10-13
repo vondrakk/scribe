@@ -38,6 +38,7 @@ fn gen_for_episode(ep: &Episode) -> Option<Draft> {
                 status: "draft".into(),
                 composed: false,
                 dur_secs: 0.0,
+                days: Vec::new(),
             });
         }
     } else {
@@ -61,6 +62,7 @@ fn gen_for_episode(ep: &Episode) -> Option<Draft> {
             status: "draft".into(),
             composed: false,
             dur_secs: 0.0,
+            days: Vec::new(),
         });
     }
     None
@@ -121,6 +123,7 @@ fn gen_handoff(episodes: &[Episode]) -> Option<Draft> {
         status: "draft".into(),
         composed: false,
         dur_secs: 0.0,
+        days: Vec::new(),
     })
 }
 

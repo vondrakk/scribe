@@ -43,6 +43,39 @@ fn mock_ref(target: &str) -> String {
     }
 }
 
+/// Noon on `day` (local) as unix seconds — None for today, which is logged as now.
+fn day_start(day: &str) -> Option<f64> {
+    use chrono::TimeZone;
+    let d = chrono::NaiveDate::parse_from_str(day, "%Y-%m-%d").ok()?;
+    if d == chrono::Local::now().date_naive() {
+        return None;
+    }
+    chrono::Local.from_local_datetime(&d.and_hms_opt(12, 0, 0)?).single().map(|t| t.timestamp() as f64)
+}
+
+/// Log `total` seconds on a ticket as one worklog per day worked, dated on
+/// that day. The write-up goes on the latest day; earlier days point at it.
+/// `days` holds the measured split; it is scaled to `total` (which the
+/// engineer may have corrected).
+pub fn post_worklogs(key: &str, total: f64, days: &[model::DaySecs], body: &str) -> Result<atlassian::Posted, String> {
+    let days: Vec<&model::DaySecs> = days.iter().filter(|d| d.secs >= 60.0).collect();
+    if days.len() < 2 {
+        return atlassian::add_worklog(key, total, body, days.first().and_then(|d| day_start(&d.day)));
+    }
+    let measured: f64 = days.iter().map(|d| d.secs).sum();
+    let last = days.len() - 1;
+    let mut posted = None;
+    for (n, d) in days.iter().enumerate() {
+        let note = if n == last { body.to_string() } else { format!("Part of the work written up on {}.", days[last].day) };
+        match atlassian::add_worklog(key, total * d.secs / measured, &note, day_start(&d.day)) {
+            Ok(p) => posted = Some(p),
+            Err(e) if n == 0 => return Err(e),
+            Err(e) => return Err(format!("Jira took {n} of {} days and then failed: {e}", days.len())),
+        }
+    }
+    posted.ok_or_else(|| "nothing to log".to_string())
+}
+
 pub fn publish_draft(draft_id: i64, engineer: &str) -> Published {
     let mut drafts = model::load_drafts();
     let idx = match drafts.iter().position(|d| d.id == draft_id) {
@@ -70,7 +103,7 @@ pub fn publish_draft(draft_id: i64, engineer: &str) -> Published {
                 };
                 if d.dur_secs > 0.0 {
                     // Real worklog: push the summed time (with the body as its note).
-                    atlassian::add_worklog(key, d.dur_secs, &d.body)
+                    post_worklogs(key, d.dur_secs, &d.days, &d.body)
                 } else {
                     // No duration — fall back to a comment (universal, no time dep).
                     atlassian::add_comment(key, &d.body)
@@ -101,6 +134,7 @@ pub fn publish_draft(draft_id: i64, engineer: &str) -> Published {
     let payload = json!({
         "target": d.target,
         "kind": d.kind,
+        "days": d.days,
         "ref": reference,
         "url": url,
         "title": d.title,

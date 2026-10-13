@@ -81,6 +81,8 @@ enum Cmd {
     Process,
     /// Apply retention (drop raw capture older than N days).
     Sweep,
+    /// Rewrite the Markdown journal from the logbook and print where it is.
+    Journal,
     /// Pull inbound artifacts (GitLab MRs, assigned Jira issues) into the inbox.
     Pull,
     /// Launch the local control panel.
@@ -142,9 +144,16 @@ fn main() {
         Cmd::Sweep => {
             println!("dropped {} aged raw event(s)", capture::sweep_retention());
         }
+        Cmd::Journal => {
+            let n = scribe::journal::sync();
+            println!("{} file(s) updated in {}", n, scribe::journal::dir().to_string_lossy());
+        }
         Cmd::Pull => {
             let r = inbox::refresh();
-            println!("inbox: {} GitLab MR(s), {} Jira issue(s)", r.gitlab, r.jira);
+            println!(
+                "inbox: {} Jira issue(s), {} GitLab MR(s), {} PagerDuty incident(s), {} Confluence page(s)",
+                r.jira, r.gitlab, r.pagerduty, r.confluence
+            );
             for e in r.errors {
                 eprintln!("  {e}");
             }

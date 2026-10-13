@@ -36,6 +36,42 @@ cargo build --release          # -> target/release/scribe
 Everything runs in an isolated sandbox (`/tmp/scribe-demo*`); your real repos
 and shell config are never touched. Remove the sandbox dirs to clean up.
 
+## The stream: one pane for Jira, GitLab, PagerDuty, Confluence and chat
+
+The first screen is one list with **one row per piece of work** — a ticket, or
+an incident / merge request / stretch of untracked work when there is no
+ticket. A row pulls together everything known about it, ranked by whether it
+needs you now:
+
+| world | what flows in | what you can do from the row |
+|---|---|---|
+| **PagerDuty** | open incidents assigned to you | acknowledge, resolve, add a note |
+| **Jira** | issues matching your JQL; status, assignee, latest comments | comment, move status, log time / create (via the work card) |
+| **GitLab** | merge requests assigned to you or awaiting your review, from every connected instance | approve, comment |
+| **Confluence** | pages that mention the ticket | append to the page; handoff pages |
+| **Chat (Slack)** | desktop notifications and pasted threads that mention the ticket | goes into the update; a reply line to paste back |
+| **Your work** | terminal commands, commits and AI prompts captured locally | send the proposed update, edit, skip |
+
+Rows that need you sort first: a page (triggered incident), then an open
+incident, a requested review, an update ready to send, a chat mention.
+
+The Stream fits the window and never scrolls the page: the list is on the
+left, the picked item on the right with one tab per system. Arrow keys (or
+`j`/`k`) move through the list. Occasional things open on top and close with
+Escape: **Unfiled chat** (a side drawer), **Handoff note**, **＋ Chat thread**
+and **Slack post**. Results of what you sent appear as a small notice in the
+corner.
+
+- **Reads are cached** (in the database, refreshed every few minutes and by
+  **↻ Refresh** / `scribe pull`), so the stream is instant and works offline.
+- **Writes are explicit**: nothing reaches another system until you press its
+  button, and none of it works in practice mode. Each action is recorded in
+  History.
+- **Slack has no API access** here by design (no app approval): it flows in
+  through notifications and pasted threads only.
+- PagerDuty accounts in the EU region: set
+  `SCRIBE_PAGERDUTY_API=https://api.eu.pagerduty.com`.
+
 ## Desktop app (Linux + macOS)
 
 The same panel as a native app: its own window, a launcher/dock icon, a tray
@@ -83,17 +119,42 @@ $BIN install-hooks /path/to/repo                 # optional: git branch/commit e
 # the panel's capture dot turns green and episodes/drafts appear live.
 ```
 
-Everything after launch happens in the **panel**, on one screen: **Review**.
-Scribe groups your captured work into one card per ticket per day (or per
-project when no ticket was set) and writes the Jira update for it. You **Send**
-it, **Edit** it first, or **Skip** it — nothing is posted until you press Send.
-The top bar shows the active ticket and a live capture indicator, with **Change
-ticket** and **I got interrupted** (which asks what was asked, and by whom).
-**History** keeps what you sent or skipped; **Settings** connects Jira. The
-manual builder, the workbench (Terminal / Ansible / Scratchpad) and the
-pipeline views (Drafts, Episodes, Timeline, …) are under **More**. The
+Everything after launch happens in the **panel**, on one screen: the
+**Stream** (described below). Captured work is grouped into one card per ticket
+per day (or per project when no ticket was set) with the Jira update already
+written; you **Send** it, **Edit** it first, or **Skip** it — nothing is posted
+until you press Send. The top bar shows the active ticket and a live capture
+indicator, with **Change ticket** and **I got interrupted** (which asks what was
+asked, and by whom). **History** keeps what you sent, skipped or did in other
+systems; **Settings** connects your accounts. The manual builder, the workbench
+(Terminal / Ansible) and the pipeline views (Drafts, Episodes, Timeline,
+Prompts) are under **More**. The
 lower-level commands (`init`, `process`, `panel`, `w`) still exist for
 scripting/headless use.
+
+## Events: logical, logged by day
+
+An **event** is one piece of work: a ticket, or a project (repo or directory)
+when no ticket is set. It is not tied to a day.
+
+- **Same event, more work** — new work on an event joins it instead of making
+  a second one. If the event is still waiting on the Stream, its update and
+  time simply grow. If you already chose **Log only**, the new work is added to
+  that History entry automatically — what was done (under "Added
+  automatically") and the time. If the event was already **sent to Jira**, the
+  new work waits as an addition with one button, **Send the addition**: it
+  posts only the new part to the ticket and adds it to the same History
+  entry. Nothing is ever posted without a Send.
+- **When the same work becomes a new event** — Settings → *Events*:
+  *Automatically* (default: a new day after a break of 6 hours or more, so
+  working past midnight stays one event), *Every day*, or *Never*.
+- **Logging is by day regardless.** An event spanning days is written to each
+  day's journal page with that day's time, and is sent to Jira as one worklog
+  per day, dated on that day; the write-up goes on the last day.
+- **Ignored paths** — Settings → *Events*, or "Don't ask about … again" on an
+  update. Work under an ignored path never appears on the Stream: it is logged
+  silently to History and the journal (marked *silent*), and can still be
+  pushed to Jira from History.
 
 ## Chat context (the "why") — no Slack app needed
 
@@ -111,10 +172,21 @@ Jira update without any Slack API access:
   sender, channel and preview of chat notifications your desktop already
   shows (via the D-Bus session bus). They are only *offered* on the matching
   card; nothing is added to an update unless you add it.
-- **Reply line** — after Send, Review shows a one-liner to paste back into the
-  thread ("Written up in OPS-1234: …") so chat points at Jira.
+- **Reply line** — after Send, the Stream shows a one-liner to paste back into
+  the thread ("Written up in OPS-1234: …") so chat points at Jira.
+- **Filing by hand** — a message that named no ticket and didn't fall inside
+  any work appears under *Unfiled chat* at the bottom of the Stream. Pick a
+  row (or type a ticket key) to file it there; a filed message is trusted like
+  a pasted thread and goes into that update. Every chat line also has
+  *Move to…*, for when time or a mention put it in the wrong place.
+- **Slack post** — on any update, *Slack post* rewrites it in Slack's markup
+  (with the time and ticket link) to edit, copy and paste. Scribe never posts
+  to Slack itself.
 
-All of it stays in `$SCRIBE_HOME/context.json`, expires with raw capture
+**Log only** keeps an update and its time in History on this machine without
+posting anywhere; *Push to Jira* on that History entry posts it later.
+
+All of it stays in the local database, expires with raw capture
 (`sweep`), and leaves the machine only inside an update you send.
 
 The generated `scribe.sh` and the git hooks embed the absolute path of the
@@ -166,8 +238,8 @@ scribe ai "refactor to tokio::select" --tool claude --model claude-haiku-4-5
 echo "$long_prompt" | scribe ai - --tool copilot    # or pipe via stdin
 ```
 
-Each prompt is appended to `$SCRIBE_HOME/prompts/<session>.jsonl` — **one file
-per session**, so prompts are indexed by the session they belong to. The session
+Each prompt is stored in the database under its session, so prompts are
+indexed by the session they belong to. The session
 id comes from `$SCRIBE_SESSION` (the shell snippet sets a stable one per
 terminal). The full prompt text stays in that per-session file; a compact marker
 also lands in the main event log, so the **Timeline** shows AI usage, episode
@@ -213,12 +285,15 @@ scribe process     # episode summaries now come from Claude, stub on failure
 
 **Settings → Connections** is where the accounts go:
 
+- **PagerDuty** — your email and a personal API key (My Profile → User
+  Settings → Create API User Token).
 - **GitLab** — one row per GitLab instance (name, address, personal access
-  token with `read_api`). Add as many as you use; merge requests from all of
+  token with `read_api` to view, `api` to comment and approve). Add as many as you use; merge requests from all of
   them land in the inbox.
 - **Atlassian** — site, email and an API token (id.atlassian.com → Security →
   API tokens). Used for Jira and Confluence, both reading and posting.
-- **Post to the real Jira and Confluence** — off is practice mode (`mock`).
+- **Post and act for real** — off is practice mode (`mock`): sends write a
+  local file and actions on other systems are refused.
 
 Tokens are stored in `$SCRIBE_HOME/secrets.json` (mode 0600), apart from
 `config.json`, and the panel never sends them back to the browser. Changing an
@@ -249,10 +324,23 @@ After that, **Publish** in the panel posts to real Jira/Confluence. Any failure
 
 ## Where things live (`$SCRIBE_HOME`, default `~/.scribe`)
 
-- `events.jsonl` — the append-only raw event log. Shell + git hooks only ever
-  *append* here. Source of truth; everything else is rebuildable from it.
-- `episodes.json` / `drafts.json` — derived state, rebuilt by `process`.
-- `state.json` — binding + id counters.
+- `scribe.db` — Scribe's own database (SQLite, compiled in; nothing to
+  install). Holds everything the app updates: captured events (the source of
+  truth, append-only), AI prompts, the logbook behind History, chat context,
+  and derived state (episodes, drafts, the cache of other systems). Writes are
+  transactions, so the shell hook and the panel can write at the same time.
+- `journal/` — the logbook as Markdown, rewritten from the database whenever
+  History changes:
+  - `days/2026/10/2026-10-13.md` — everything sent or logged that day
+  - `tickets/OPS-1234.md` — the same entries per ticket, across days
+
+  Each entry has the time, ticket, where it went (Jira, Confluence, or kept
+  locally) and the full write-up. Raw capture expires; the journal does not.
+  The files are a readable copy: edit the entry in Scribe, not the file, or the
+  edit is overwritten. Skipped work is not written. `scribe journal` rebuilds
+  them on demand.
+- `legacy-json/` — the JSON files earlier versions kept, moved here (not
+  deleted) the first time a database build runs and imports them.
 - `binding` — plain-text current ticket, read by the fast prompt segment.
 - `published/` — mock-published artifacts (what *would* post to Jira/Confluence).
 - `config.json` — tunables (episode gap, retention, key pattern, LLM backend).
@@ -262,8 +350,12 @@ After that, **Publish** in the panel posts to real Jira/Confluence. Any failure
 | file | role |
 |---|---|
 | `lib.rs` | the core as a library, shared by the CLI and `app/` (desktop app) |
+| `desk.rs` | the stream: one row per work item across every system, and the outbound actions |
+| `pagerduty.rs` | PagerDuty incidents in; acknowledge / resolve / note out |
 | `config.rs` | paths + config (`$SCRIBE_HOME`) |
-| `model.rs` | data types + file-backed store (append-only JSONL + JSON state) |
+| `model.rs` | data types + their storage (append-only events, derived state) |
+| `db.rs` | the SQLite database: row tables, small documents, one-time import of old JSON files |
+| `journal.rs` | the Markdown journal written from the logbook (`journal/days`, `journal/tickets`) |
 | `capture.rs` | git detection, event recording, retention sweep |
 | `binding.rs` | active-ticket model, branch-key inference, `w` verbs |
 | `pipeline.rs` | sessionize → classify → `stub_summary` (deterministic baseline/fallback) |

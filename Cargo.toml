@@ -3,7 +3,7 @@ members = ["app"]
 
 # One version for the CLI and the desktop app.
 [workspace.package]
-version = "0.3.0"
+version = "0.4.0"
 
 [package]
 name = "scribe"
@@ -28,6 +28,8 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 tiny_http = "0.12"
 ureq = "2"
 portable-pty = "0.8"
+# The database engine is compiled in, so there is nothing to install.
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 [profile.release]
 opt-level = 2

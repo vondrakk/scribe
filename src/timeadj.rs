@@ -8,20 +8,14 @@
 
 use std::collections::HashMap;
 
-use crate::config;
 
 /// Load the override map (episode id → seconds).
 pub fn load() -> HashMap<i64, f64> {
-    std::fs::read_to_string(config::time_overrides_file())
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+    crate::db::doc("time_overrides")
 }
 
 fn save(m: &HashMap<i64, f64>) {
-    if let Ok(s) = serde_json::to_string_pretty(m) {
-        let _ = std::fs::write(config::time_overrides_file(), s);
-    }
+    crate::db::put_doc("time_overrides", m);
 }
 
 /// Set (or clear, when secs < 0) the override for an episode.
@@ -33,4 +27,13 @@ pub fn set(episode_id: i64, secs: f64) {
         m.insert(episode_id, secs);
     }
     save(&m);
+}
+
+/// Re-key the corrections after episode ids changed; unknown ids are dropped.
+pub fn remap(map: &HashMap<i64, i64>) {
+    let old = load();
+    if old.is_empty() {
+        return;
+    }
+    save(&old.into_iter().filter_map(|(id, secs)| Some((*map.get(&id)?, secs))).collect());
 }

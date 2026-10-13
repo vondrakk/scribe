@@ -9,7 +9,7 @@
 use serde_json::{json, Value};
 use tiny_http::{Header, Method, Response, Server};
 
-use crate::{atlassian, binding, config, context, inbox, logbook, model, pipeline, prompts, pty, publish, review, rules, stream, timeadj, workbench};
+use crate::{atlassian, binding, config, context, desk, inbox, logbook, model, pipeline, prompts, pty, publish, review, rules, stream, timeadj, workbench};
 
 const INDEX_HTML: &str = include_str!("panel_index.html");
 const XTERM_JS: &str = include_str!("../assets/xterm.js");
@@ -41,6 +41,7 @@ fn state_json() -> Value {
         "config": config::load(),
         "counts": {
             "review": review::build().len(),
+            "desk": desk::needs_count(),
             "drafts": n_drafts,
             "episodes": episodes.len(),
             "unaccounted": n_un,
@@ -54,6 +55,7 @@ fn state_json() -> Value {
             "count": inbox::load().items.len(),
             "fetched_ts": inbox::load().fetched_ts,
             "gitlab": crate::gitlab::is_configured(),
+            "pagerduty": crate::pagerduty::is_configured(),
             "jira": atlassian::is_authenticated(),
         },
         "connections": crate::secrets::view(),
@@ -159,6 +161,9 @@ fn logbook_json() -> Value {
             "draft_id": e.draft_id,
             "draft_status": draft_status,
             "pushed_jira": e.pushed_jira,
+            "body": e.text(),
+            "silent": e.silent,
+            "auto": e.auto_ids.len(),
             "breakdown": breakdown,
         }));
     }
@@ -355,7 +360,20 @@ fn apply_config(v: &Value) {
     if let Some(x) = v.get("notification_apps").and_then(|x| x.as_str()) {
         c.notification_apps = x.to_string();
     }
+    if let Some(x) = v.get("event_split").and_then(|x| x.as_str()) {
+        if ["auto", "day", "never"].contains(&x) {
+            c.event_split = x.to_string();
+        }
+    }
+    if let Some(x) = v.get("ignored_paths").and_then(|x| x.as_array()) {
+        let mut paths: Vec<String> =
+            x.iter().filter_map(|p| p.as_str()).map(|p| p.trim().to_string()).filter(|p| !p.is_empty()).collect();
+        paths.dedup();
+        c.ignored_paths = paths;
+    }
     config::save(&c);
+    // Either setting can move work between the Stream and the log.
+    review::settle();
 }
 
 /// Background thread: periodically refresh the inbox so inbound artifacts flow in
@@ -372,8 +390,8 @@ fn spawn_inbox_refresher() {
             std::thread::sleep(std::time::Duration::from_secs(60));
             continue;
         }
-        let configured = (!cfg.gitlab_base_url.is_empty()
-            && std::env::var("GITLAB_TOKEN").map(|v| !v.is_empty()).unwrap_or(false))
+        let configured = crate::gitlab::is_configured()
+            || crate::pagerduty::is_configured()
             || atlassian::is_authenticated();
         if configured {
             let _ = inbox::refresh();
@@ -428,11 +446,10 @@ pub fn try_serve() -> Result<(), String> {
     // appends, so a size change means new events → re-sessionize. This runs on
     // the single request-handling thread (tiny_http is sequential), so there is
     // no concurrent file access to guard against.
-    let evlog = config::events_log();
-    let mut last_sz = std::fs::metadata(&evlog).map(|m| m.len()).unwrap_or(0);
+    let mut last_sz = crate::db::last_id(crate::db::EVENTS);
 
     for mut request in server.incoming_requests() {
-        let sz = std::fs::metadata(&evlog).map(|m| m.len()).unwrap_or(0);
+        let sz = crate::db::last_id(crate::db::EVENTS);
         if sz != last_sz {
             pipeline::process();
             last_sz = sz;
@@ -511,6 +528,34 @@ pub fn try_serve() -> Result<(), String> {
                     Err(e) => (400, json!({"ok": false, "error": e}).to_string(), false),
                 }
             }
+            (Method::Post, "/api/review/slack") => {
+                let req: review::SendReq = serde_json::from_str(&body).unwrap_or_default();
+                (200, json!({"ok": true, "text": review::slack_post(&req)}).to_string(), false)
+            }
+            (Method::Post, "/api/context/assign") => {
+                let v = serde_json::from_str::<Value>(&body).unwrap_or(json!({}));
+                let s = |k: &str| v.get(k).and_then(|x| x.as_str()).unwrap_or("");
+                match context::assign(v.get("id").and_then(|x| x.as_i64()).unwrap_or(-1), s("ticket"), s("pin")) {
+                    Ok(()) => (200, json!({"ok": true}).to_string(), false),
+                    Err(e) => (400, json!({"ok": false, "error": e}).to_string(), false),
+                }
+            }
+            (Method::Post, "/api/ignore") => {
+                // Stop asking about a path: its work is logged silently from now on.
+                let v = serde_json::from_str::<Value>(&body).unwrap_or(json!({}));
+                let path = v.get("path").and_then(|x| x.as_str()).unwrap_or("").trim().to_string();
+                if path.is_empty() {
+                    (400, json!({"ok": false, "error": "no path"}).to_string(), false)
+                } else {
+                    let mut c = config::load();
+                    if !c.ignored_paths.contains(&path) {
+                        c.ignored_paths.push(path);
+                        config::save(&c);
+                    }
+                    review::settle();
+                    (200, json!({"ok": true}).to_string(), false)
+                }
+            }
             (Method::Post, "/api/review/skip") => {
                 let req: review::SendReq = serde_json::from_str(&body).unwrap_or_default();
                 review::skip(&req.episode_ids, &req.context_ids);
@@ -532,7 +577,22 @@ pub fn try_serve() -> Result<(), String> {
             (Method::Post, "/api/inbox/refresh") => {
                 let r = inbox::refresh();
                 (200, json!({"ok": true, "gitlab": r.gitlab, "jira": r.jira,
+                    "pagerduty": r.pagerduty, "confluence": r.confluence,
                     "errors": r.errors}).to_string(), false)
+            }
+            (Method::Get, "/api/desk") => {
+                let d = desk::build();
+                (200, json!({ "desk": d, "handoff": review::handoff() }).to_string(), false)
+            }
+            (Method::Get, "/api/desk/jira") => {
+                // ?key=OPS-123 — the ticket in depth, fetched when a row is opened.
+                let key = url.split_once("key=").map(|(_, k)| k.split('&').next().unwrap_or("")).unwrap_or("");
+                let ok = !key.is_empty() && key.chars().all(|c| c.is_ascii_alphanumeric() || c == '-');
+                match ok.then(|| atlassian::issue_detail(key)) {
+                    Some(Ok(v)) => (200, v.to_string(), false),
+                    Some(Err(e)) => (200, json!({"error": e}).to_string(), false),
+                    None => (400, json!({"error": "bad key"}).to_string(), false),
+                }
             }
             (Method::Post, "/api/rules") => {
                 let v = serde_json::from_str::<Value>(&body).unwrap_or(json!({}));
@@ -625,8 +685,9 @@ pub fn try_serve() -> Result<(), String> {
                             (400, json!({"ok": false, "error": "set a ticket first"}).to_string(), false)
                         } else {
                             let secs = stream::secs_for_ids(&e.episode_ids);
-                            let comment = if e.title.is_empty() { "Logged via Scribe".into() } else { e.title.clone() };
-                            match atlassian::add_worklog(&ticket, secs, &comment) {
+                            let comment = if !e.text().is_empty() { e.text() }
+                                else if e.title.is_empty() { "Logged via Scribe".into() } else { e.title.clone() };
+                            match crate::publish::post_worklogs(&ticket, secs, &stream::days_for_ids(&e.episode_ids), &comment) {
                                 Ok(p) => {
                                     logbook::mark_pushed(entry_id, &ticket);
                                     (200, json!({"ok": true, "ref": p.reference, "url": p.url}).to_string(), false)
@@ -662,17 +723,6 @@ pub fn try_serve() -> Result<(), String> {
                     Ok(id) => (200, json!({"ok": true, "draft_id": id}).to_string(), false),
                     Err(e) => (400, json!({"ok": false, "error": e}).to_string(), false),
                 }
-            }
-            (Method::Get, "/api/scratchpad") => {
-                (200, json!({ "text": workbench::read_scratchpad() }).to_string(), false)
-            }
-            (Method::Post, "/api/scratchpad") => {
-                let text = serde_json::from_str::<Value>(&body)
-                    .ok()
-                    .and_then(|v| v.get("text").and_then(|x| x.as_str()).map(String::from))
-                    .unwrap_or_default();
-                workbench::write_scratchpad(&text);
-                (200, json!({ "ok": true }).to_string(), false)
             }
             (Method::Post, "/api/run") => {
                 let v = serde_json::from_str::<Value>(&body).unwrap_or(json!({}));
@@ -744,6 +794,18 @@ pub fn try_serve() -> Result<(), String> {
                 (200, json!({"ok": true}).to_string(), false)
             }
             _ => {
+                // POST /api/desk/act/<system>/<verb> — act on another system.
+                if method == Method::Post && parts.len() == 5 && parts[1] == "desk" && parts[2] == "act" {
+                    if !same_origin(&request) {
+                        (403, json!({"error": "actions can only be taken from the panel itself"}).to_string(), false)
+                    } else {
+                        let v = serde_json::from_str::<Value>(&body).unwrap_or(json!({}));
+                        match desk::act(&format!("{}/{}", parts[3], parts[4]), &v) {
+                            Ok(out) => (200, out.to_string(), false),
+                            Err(e) => (200, json!({"error": e}).to_string(), false),
+                        }
+                    }
+                } else
                 // GET /api/run/<id> — poll a running/finished command.
                 if method == Method::Get && parts.len() == 3 && parts[1] == "run" {
                     match workbench::get_run(parts[2]) {

@@ -1,17 +1,15 @@
-//! Data types + the file-backed store.
+//! Data types + their storage in Scribe's database (src/db.rs).
 //!
-//! Two stores, by design:
-//!   * events.jsonl  — the raw append-only log. Written by shell/git hooks with a
-//!                     single atomic append. Source of truth.
-//!   * *.json        — derived state (episodes, drafts, binding, counters),
-//!                     rebuildable from the log by `process`.
+//! Two kinds of data, by design:
+//!   * events  — the raw append-only capture, written by shell/git hooks one
+//!               row at a time. Source of truth.
+//!   * derived — episodes, drafts, binding, counters; rebuildable from the
+//!               events by `process`.
 
 use serde::{Deserialize, Serialize};
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::config;
+use crate::{config, db};
 
 pub fn now_ts() -> f64 {
     SystemTime::now()
@@ -45,6 +43,16 @@ pub struct Event {
     pub msg: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub sha: Option<String>,
+    /// Its row in the database (not stored in the record itself).
+    #[serde(skip)]
+    pub row: i64,
+}
+
+/// Time spent on one calendar day (local), as `YYYY-MM-DD`.
+#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
+pub struct DaySecs {
+    pub day: String,
+    pub secs: f64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -94,6 +102,10 @@ pub struct Draft {
     /// Posted as a real Jira worklog when > 0; 0 falls back to a comment.
     #[serde(default)]
     pub dur_secs: f64,
+    /// How that time falls across days, when the work spans more than one:
+    /// it is logged as one worklog per day.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub days: Vec<DaySecs>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -115,81 +127,50 @@ pub struct State {
     pub publish_seq: i64,
 }
 
-// --- append-only event log -------------------------------------------------
+// --- captured events (append-only) -----------------------------------------
 
-/// Atomically append one event to the JSONL log.
+/// Record one event.
 pub fn append_event(mut ev: Event) {
     if ev.ts == 0.0 {
         ev.ts = now_ts();
     }
-    if let Ok(mut line) = serde_json::to_string(&ev) {
-        line.push('\n');
-        if let Ok(mut fh) = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(config::events_log())
-        {
-            let _ = fh.write_all(line.as_bytes());
-        }
-    }
+    db::append(db::EVENTS, ev.ts, &ev.kind, &ev);
 }
 
 pub fn read_events() -> Vec<Event> {
-    let mut out = Vec::new();
-    if let Ok(s) = std::fs::read_to_string(config::events_log()) {
-        for line in s.lines() {
-            let line = line.trim();
-            if line.is_empty() {
-                continue;
-            }
-            if let Ok(ev) = serde_json::from_str::<Event>(line) {
-                out.push(ev);
-            }
-        }
-    }
-    out.sort_by(|a, b| a.ts.partial_cmp(&b.ts).unwrap_or(std::cmp::Ordering::Equal));
-    out
+    db::all_with_ids::<Event>(db::EVENTS)
+        .into_iter()
+        .map(|(row, mut ev)| {
+            ev.row = row;
+            ev
+        })
+        .collect()
 }
 
-// --- derived state (JSON files) -------------------------------------------
+// --- derived state -----------------------------------------------------------
 
 pub fn load_state() -> State {
-    std::fs::read_to_string(config::state_file())
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+    db::doc("state")
 }
 
 pub fn save_state(st: &State) {
-    if let Ok(s) = serde_json::to_string_pretty(st) {
-        let _ = std::fs::write(config::state_file(), s);
-    }
+    db::put_doc("state", st);
 }
 
 pub fn load_episodes() -> Vec<Episode> {
-    std::fs::read_to_string(config::episodes_file())
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+    db::doc("episodes")
 }
 
 pub fn save_episodes(eps: &[Episode]) {
-    if let Ok(s) = serde_json::to_string_pretty(eps) {
-        let _ = std::fs::write(config::episodes_file(), s);
-    }
+    db::put_doc("episodes", eps);
 }
 
 pub fn load_drafts() -> Vec<Draft> {
-    std::fs::read_to_string(config::drafts_file())
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+    db::doc("drafts")
 }
 
 pub fn save_drafts(ds: &[Draft]) {
-    if let Ok(s) = serde_json::to_string_pretty(ds) {
-        let _ = std::fs::write(config::drafts_file(), s);
-    }
+    db::put_doc("drafts", ds);
 }
 
 /// Wipe captured + derived data for a clean slate. Keeps config.json and the
@@ -199,21 +180,15 @@ pub fn reset(include_published: bool) -> (usize, usize, usize, usize) {
     let n_ev = read_events().len();
     let n_ep = load_episodes().len();
     let n_dr = load_drafts().len();
-    let n_pr = std::fs::read_dir(config::prompts_dir())
-        .map(|rd| rd.flatten().filter(|e| e.path().extension().and_then(|x| x.to_str()) == Some("jsonl")).count())
-        .unwrap_or(0);
+    let n_pr = db::count(db::PROMPTS);
 
-    for f in [
-        config::events_log(),
-        config::episodes_file(),
-        config::drafts_file(),
-        config::state_file(),
-        config::binding_file(),
-        config::home().join("context.json"),
-    ] {
-        let _ = std::fs::remove_file(f);
+    for t in [db::EVENTS, db::PROMPTS, db::CONTEXT] {
+        db::clear(t);
     }
-    let _ = std::fs::remove_dir_all(config::prompts_dir());
+    for d in ["episodes", "drafts", "state", "context_seq"] {
+        db::drop_doc(d);
+    }
+    let _ = std::fs::remove_file(config::binding_file());
     if include_published {
         let _ = std::fs::remove_dir_all(config::published_dir());
     }
