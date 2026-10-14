@@ -1,0 +1,5 @@
+The app icon is the feather emoji (U+1FAB6) from Noto Emoji by Google,
+https://github.com/googlefonts/noto-emoji, licensed under the Apache License 2.0
+(https://www.apache.org/licenses/LICENSE-2.0). It is the same feather the panel
+shows beside "Scribe"; the sizes here were rendered from its SVG with
+`cargo tauri icon`.
